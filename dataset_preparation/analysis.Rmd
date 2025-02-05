@@ -1,0 +1,60 @@
+---
+title: Analysis of Available Data
+output: pdf_document
+---
+
+```{r}
+library(tidyverse)
+library(jsonlite)
+
+load_KUK_subcorpus_metadata <- function(crp) {
+  read_tsv(paste(c(
+    "../corpora/KUK_1.0/metadata/", crp, "_DocumentFileFormat.tsv"
+  ), collapse = "")) %>%
+    filter(FileFormat == "TXT") %>%
+    full_join(
+      read_tsv(paste(c(
+        "../corpora/KUK_1.0/metadata/",
+        crp,
+        "_DocumentIdentificationGenreProperties.tsv"
+      ), collapse = "")),
+      by = "KUK_ID"
+    ) %>%
+    mutate(across(where(is.numeric), as.character)) %>%
+    mutate(subcorpus = crp) %>%
+    select(KUK_ID, FileName, FileFormat, FolderPath, subcorpus, everything())
+}
+
+kuky_orig <- fromJSON("../corpora/KUKY/argumentative.json")$documents %>%
+  as.data.frame() %>%
+  bind_rows(
+    fromJSON("../corpora/KUKY/normative.json")$documents %>% as.data.frame()
+  ) %>%
+  rename(KUK_ID = doc_id) %>%
+  select(!c(plainText, doc_name)) %>%
+  select(KUK_ID, everything())
+
+kuky_kuk <- load_KUK_subcorpus_metadata("KUKY") %>%
+  filter(FolderPath != "data/KUKY/MD_TXT")
+
+kuky <- kuky_kuk %>% full_join(kuky_orig, by = "KUK_ID")
+czcdc <- load_KUK_subcorpus_metadata("CzCDC")
+eso <- load_KUK_subcorpus_metadata("ESO")
+frbo <- load_KUK_subcorpus_metadata("FrBo")
+lifrlaw <- load_KUK_subcorpus_metadata("LiFRLaw")
+ombuflyers <- load_KUK_subcorpus_metadata("OmbuFlyers")
+
+df <- bind_rows(kuky, czcdc) %>%
+  bind_rows(eso) %>%
+  bind_rows(frbo) %>%
+  bind_rows(lifrlaw) %>%
+  bind_rows(ombuflyers)
+
+str(df)
+
+readable <- df %>% filter(Readability %in% c("high", "medium"))
+unreadable <- df %>% filter(!(Readability %in% c("high", "medium")))
+
+str(readable)
+str(unreadable)
+```
