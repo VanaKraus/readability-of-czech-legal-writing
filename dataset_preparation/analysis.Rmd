@@ -3,6 +3,8 @@ title: Analysis of Available Data
 output: pdf_document
 ---
 
+# Load the corpora
+
 ```{r}
 library(tidyverse)
 library(jsonlite)
@@ -35,7 +37,7 @@ kuky_orig <- fromJSON("../corpora/KUKY/argumentative.json")$documents %>%
   select(KUK_ID, everything())
 
 kuky_kuk <- load_KUK_subcorpus_metadata("KUKY") %>%
-  filter(FolderPath != "data/KUKY/MD_TXT")
+  filter(FolderPath == "data/KUKY/TXT")
 
 kuky <- kuky_kuk %>% full_join(kuky_orig, by = "KUK_ID")
 czcdc <- load_KUK_subcorpus_metadata("CzCDC")
@@ -51,7 +53,42 @@ df <- bind_rows(kuky, czcdc) %>%
   bind_rows(ombuflyers)
 
 str(df)
+```
 
+# Filter for the dataset
+
+Some subcorpora overlap (*FrBo* with *ESO*, and multiple subcorpora with *KUKY*).
+
+The usage of documents with ClarityPursuit == NA is questionable, let's exclude such documents. This effectively comes with a price of excluding the whole *eso* subcorpus. 
+
+The usage of documents with ClarityPursuit == TRUE is also questionable as they're not reviewed in the same manner as the documents from KUKY, yet at the same time they are less likely to be as "unreadable" as the documents with ClarityPursuit == FALSE.
+
+After filtering ClarityPursuit == NA out, the only remaining overlaps are with *KUKY*. Let's keep the documents from *KUKY* as they are associated with a more careful readability evaluation.
+
+```{r}
+df %>%
+  group_by(FileName) %>%
+  mutate(n = n()) %>%
+  filter(n > 1) %>%
+  select(FileName, subcorpus, Readability, ClarityPursuit) %>%
+  arrange(FileName) %>%
+  print(n = 80)
+
+df <- df %>%
+  # filter(subcorpus != "LiFRLaw") %>%
+  filter(!is.na(Readability) | !is.na(ClarityPursuit))
+
+df <- df %>%
+  group_by(FileName) %>%
+  mutate(n = n()) %>%
+  ungroup() %>%
+  filter(n == 1 | !is.na(Readability)) %>%
+  select(-n)
+```
+
+The dataset is now free of overlaps.
+
+```{r}
 readable <- df %>% filter(Readability %in% c("high", "medium"))
 unreadable <- df %>% filter(!(Readability %in% c("high", "medium")))
 
