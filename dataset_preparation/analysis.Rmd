@@ -71,6 +71,8 @@ kuky_properties_df <- fromJSON(
   rename(KUK_ID = doc_id) %>%
   mutate(doclen = str_length(plainText))
 
+print(kuky_properties_df %>% group_by(Readability) %>% count())
+
 kuky_properties_df %>% ggplot(aes(x = Readability, y = doclen)) +
   geom_boxplot()
 ```
@@ -138,7 +140,7 @@ str(unreadable)
 ```{r}
 .split_prop <- 4 / 5 # proportion of testing data in the dataset
 .no_folds <- 10 # no. of folds in v-fold cross-validation
-.balance <- 1 / 3 # proportion of positive samples in the target dataset
+.balance <- 3 / 10 # proportion of positive samples in the target dataset
 
 dssize_positive <- count(readable)[[1, 1]]
 dssize_total <- dssize_positive / .balance
@@ -155,13 +157,13 @@ print(c(
     "Negative class size:", dssize_negative
   ), collapse = " "),
   paste(c(
-    "Testing data set size:", dssize_total * .split_prop
+    "Training data set size:", dssize_total * .split_prop
   ), collapse = " "),
   paste(c(
-    "Testing positive class size:", dssize_positive * .split_prop
+    "Training positive class size:", dssize_positive * .split_prop
   ), collapse = " "),
   paste(c(
-    "Testing negative class size:", dssize_negative * .split_prop
+    "Training negative class size:", dssize_negative * .split_prop
   ), collapse = " "),
   paste(c(
     "One fold size:", (dssize_total * .split_prop) / .no_folds
@@ -173,13 +175,13 @@ print(c(
     "One fold negative class size:", (dssize_negative * .split_prop) / .no_folds
   ), collapse = " "),
   paste(c(
-    "Training data set size:", dssize_total * (1 - .split_prop)
+    "Evaluation data set size:", dssize_total * (1 - .split_prop)
   ), collapse = " "),
   paste(c(
-    "Training positive class size:", dssize_positive * (1 - .split_prop)
+    "Evaluation positive class size:", dssize_positive * (1 - .split_prop)
   ), collapse = " "),
   paste(c(
-    "Training negative class size:", dssize_negative * (1 - .split_prop)
+    "Evaluation negative class size:", dssize_negative * (1 - .split_prop)
   ), collapse = " ")
 ), quote = FALSE)
 ```
