@@ -12,7 +12,7 @@ library(jsonlite)
 
 set.seed(42)
 
-load_KUK_subcorpus_metadata <- function(crp) {
+load_kuk_subcorpus_metadata <- function(crp) {
   read_tsv(paste(c(
     "../corpora/KUK_1.0/metadata/", crp, "_DocumentFileFormat.tsv"
   ), collapse = "")) %>%
@@ -31,23 +31,23 @@ load_KUK_subcorpus_metadata <- function(crp) {
 }
 
 kuky_orig <- fromJSON("../corpora/KUKY/argumentative.json")$documents %>%
-  as.data.frame() %>%
+  as_tibble() %>%
   bind_rows(
-    fromJSON("../corpora/KUKY/normative.json")$documents %>% as.data.frame()
+    fromJSON("../corpora/KUKY/normative.json")$documents %>% as_tibble()
   ) %>%
   rename(KUK_ID = doc_id) %>%
   select(!c(plainText, doc_name)) %>%
   select(KUK_ID, everything())
 
-kuky_kuk <- load_KUK_subcorpus_metadata("KUKY") %>%
+kuky_kuk <- load_kuk_subcorpus_metadata("KUKY") %>%
   filter(FolderPath == "data/KUKY/TXT")
 
 kuky <- kuky_kuk %>% full_join(kuky_orig, by = "KUK_ID")
-czcdc <- load_KUK_subcorpus_metadata("CzCDC")
-eso <- load_KUK_subcorpus_metadata("ESO")
-frbo <- load_KUK_subcorpus_metadata("FrBo")
-lifrlaw <- load_KUK_subcorpus_metadata("LiFRLaw")
-ombuflyers <- load_KUK_subcorpus_metadata("OmbuFlyers")
+czcdc <- load_kuk_subcorpus_metadata("CzCDC")
+eso <- load_kuk_subcorpus_metadata("ESO")
+frbo <- load_kuk_subcorpus_metadata("FrBo")
+lifrlaw <- load_kuk_subcorpus_metadata("LiFRLaw")
+ombuflyers <- load_kuk_subcorpus_metadata("OmbuFlyers")
 
 df <- bind_rows(kuky, czcdc) %>%
   bind_rows(eso) %>%
@@ -58,13 +58,40 @@ df <- bind_rows(kuky, czcdc) %>%
 str(df)
 ```
 
+## Properties of KUKY
+
+```{r}
+kuky_properties_df <- fromJSON(
+  "../corpora/KUKY/argumentative.json"
+)$documents %>%
+  as_tibble() %>%
+  bind_rows(
+    fromJSON("../corpora/KUKY/normative.json")$documents %>% as_tibble()
+  ) %>%
+  rename(KUK_ID = doc_id) %>%
+  mutate(doclen = str_length(plainText))
+
+kuky_properties_df %>% ggplot(aes(x = Readability, y = doclen)) +
+  geom_boxplot()
+```
+
+Quick peek into other parts of the data set:
+
+| Subcorpus      | Low # of chars | High # of chars |
+|----------------|----------------|-----------------|
+| CzCDC/ConCo    | 2.000          | 18.000          |
+| CzCDC/SupAdmCo | 3.000          | 30.000          |
+| CzCDC/SupCo    | 3.000          | 10.000          |
+| ESO            | 7.000          | 40.000          |
+| FrBo/articles  | 4.000          | 15.000
+
 # Filter out duplicates
 
 Some subcorpora overlap (*FrBo* with *ESO*, and multiple subcorpora with *KUKY*).
 
-The usage of documents with ClarityPursuit == NA is questionable, let's exclude such documents. This effectively comes with a price of excluding the whole *eso* subcorpus. 
+The usage of documents with ClarityPursuit == NA is questionable, let's exclude such documents. This effectively comes with a price of excluding the whole *ESO* subcorpus. 
 
-The usage of documents with ClarityPursuit == TRUE is also questionable as they're not reviewed in the same manner as the documents from KUKY, yet at the same time they are less likely to be as "unreadable" as the documents with ClarityPursuit == FALSE. Such documents could very well be readable, interfering with the training process.
+The usage of documents with ClarityPursuit == TRUE is also questionable as they're not reviewed in the same manner as the documents from KUKY, yet at the same time they are less likely to be as "unreadable" as the documents with ClarityPursuit == FALSE. Such documents could very well be readable, interfering with the training process. This effectively comes with a price of excluding the whole *FrBo/analyses* subcorpus. 
 
 After filtering ClarityPursuit == NA out, the only remaining overlaps are with *KUKY*. Let's keep the documents from *KUKY* as they are associated with a more careful readability evaluation.
 
@@ -93,16 +120,81 @@ The dataset is now free of overlaps.
 
 # Prepare for ML
 
-```{r}
-df <- df %>% mutate(positive_class = Readability %in% c("high", "medium"))
+## Classes
 
-readable <- df %>% filter(positive_class)
-unreadable <- df %>% filter(!positive_class)
+```{r}
+df <- df %>%
+  mutate(class = if_else(Readability %in% c("high", "medium"), "good", "bad"))
+
+readable <- df %>% filter(class == "good")
+unreadable <- df %>% filter(class == "bad")
 
 str(readable)
 str(unreadable)
+```
 
-df_split <- df %>% initial_split(prop = 4 / 5)
+## Data set parameters
+
+```{r}
+.split_prop <- 4 / 5 # proportion of testing data in the dataset
+.no_folds <- 10 # no. of folds in v-fold cross-validation
+.balance <- 1 / 3 # proportion of positive samples in the target dataset
+
+dssize_positive <- count(readable)[[1, 1]]
+dssize_total <- dssize_positive / .balance
+dssize_negative <- dssize_total - dssize_positive
+
+print(c(
+  paste(c(
+    "Data set size:", dssize_total
+  ), collapse = " "),
+  paste(c(
+    "Positive class size:", dssize_positive
+  ), collapse = " "),
+  paste(c(
+    "Negative class size:", dssize_negative
+  ), collapse = " "),
+  paste(c(
+    "Testing data set size:", dssize_total * .split_prop
+  ), collapse = " "),
+  paste(c(
+    "Testing positive class size:", dssize_positive * .split_prop
+  ), collapse = " "),
+  paste(c(
+    "Testing negative class size:", dssize_negative * .split_prop
+  ), collapse = " "),
+  paste(c(
+    "One fold size:", (dssize_total * .split_prop) / .no_folds
+  ), collapse = " "),
+  paste(c(
+    "One fold positive class size:", (dssize_positive * .split_prop) / .no_folds
+  ), collapse = " "),
+  paste(c(
+    "One fold negative class size:", (dssize_negative * .split_prop) / .no_folds
+  ), collapse = " "),
+  paste(c(
+    "Training data set size:", dssize_total * (1 - .split_prop)
+  ), collapse = " "),
+  paste(c(
+    "Training positive class size:", dssize_positive * (1 - .split_prop)
+  ), collapse = " "),
+  paste(c(
+    "Training negative class size:", dssize_negative * (1 - .split_prop)
+  ), collapse = " ")
+), quote = FALSE)
+```
+
+## Data set undersampling and split
+
+```{r}
+df <- df # TODO: undersample here!
+
+df_split <- df %>% initial_split(prop = .split_prop)
 training_set <- training(df_split)
 evaluation_set <- testing(df_split)
+
+folds <- vfold_cv(training_set, v = .no_folds, strata = class)
+
+print(df_split)
+print(folds)
 ```
