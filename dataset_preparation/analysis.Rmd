@@ -45,11 +45,24 @@ kuky_kuk <- load_kuk_subcorpus_metadata("KUKY") %>%
 kuky <- kuky_kuk %>% full_join(kuky_orig, by = "KUK_ID")
 czcdc <- load_kuk_subcorpus_metadata("CzCDC")
 eso <- load_kuk_subcorpus_metadata("ESO")
-frbo <- load_kuk_subcorpus_metadata("FrBo")
+frbo <- load_kuk_subcorpus_metadata("FrBo") %>%
+  # load metadata for FrBo updated with Quality (=Readability)
+  bind_rows(
+    read_csv("../corpora/FrBo_contents.csv") %>%
+      mutate(Readability = str_to_lower(Quality)) %>%
+      select(!Quality)
+  ) %>%
+  # and move the Quality values to the original rows
+  arrange(KUK_ID) %>%
+  group_by(KUK_ID) %>%
+  fill(Readability, .direction = "up") %>%
+  ungroup() %>%
+  filter(!is.na(FileName))
 lifrlaw <- load_kuk_subcorpus_metadata("LiFRLaw")
 ombuflyers <- load_kuk_subcorpus_metadata("OmbuFlyers")
 
-df <- bind_rows(kuky, czcdc) %>%
+df <- kuky %>%
+  bind_rows(czcdc) %>%
   bind_rows(eso) %>%
   bind_rows(frbo) %>%
   bind_rows(lifrlaw) %>%
@@ -98,6 +111,7 @@ The usage of documents with ClarityPursuit == TRUE is also questionable as they'
 After filtering ClarityPursuit == NA out, the only remaining overlaps are with *KUKY*. Let's keep the documents from *KUKY* as they are associated with a more careful readability evaluation.
 
 ```{r}
+# display duplicate file entries
 df %>%
   group_by(FileName) %>%
   mutate(n = n()) %>%
@@ -106,16 +120,20 @@ df %>%
   arrange(FileName) %>%
   print(n = 80)
 
+# keep only rows where either Readability or ClarityPursuit isn't NA
+# and exclude ClarityPursuit == TRUE
 df <- df %>%
   filter(!is.na(Readability) | !is.na(ClarityPursuit)) %>%
   filter(ClarityPursuit == FALSE | is.na(ClarityPursuit))
 
+# 7 duplicates remaining
+# keep the ones with Readability assessment
 df <- df %>%
   group_by(FileName) %>%
   mutate(n = n()) %>%
   ungroup() %>%
   filter(n == 1 | !is.na(Readability)) %>%
-  select(-n)
+  select(!n)
 ```
 
 The dataset is now free of overlaps.
@@ -127,12 +145,6 @@ The dataset is now free of overlaps.
 ```{r}
 df <- df %>%
   mutate(class = if_else(Readability %in% c("high", "medium"), "good", "bad"))
-
-readable <- df %>% filter(class == "good")
-unreadable <- df %>% filter(class == "bad")
-
-str(readable)
-str(unreadable)
 ```
 
 ## Data set parameters
@@ -142,54 +154,88 @@ str(unreadable)
 .no_folds <- 10 # no. of folds in v-fold cross-validation
 .balance <- 3 / 10 # proportion of positive samples in the target dataset
 
-dssize_positive <- count(readable)[[1, 1]]
+dssize_positive <- count(df %>% filter(class == "good"))[[1, 1]]
 dssize_total <- dssize_positive / .balance
 dssize_negative <- dssize_total - dssize_positive
 
-print(c(
+cat(c(
   paste(c(
-    "Data set size:", dssize_total
-  ), collapse = " "),
+    "Data set size: ", dssize_total, "\n"
+  ), collapse = ""),
   paste(c(
-    "Positive class size:", dssize_positive
-  ), collapse = " "),
+    "Positive class size: ", dssize_positive, "\n"
+  ), collapse = ""),
   paste(c(
-    "Negative class size:", dssize_negative
-  ), collapse = " "),
+    "Negative class size: ", dssize_negative, "\n"
+  ), collapse = ""),
   paste(c(
-    "Training data set size:", dssize_total * .split_prop
-  ), collapse = " "),
+    "Training data set size: ", dssize_total * .split_prop, "\n"
+  ), collapse = ""),
   paste(c(
-    "Training positive class size:", dssize_positive * .split_prop
-  ), collapse = " "),
+    "Training positive class size: ", dssize_positive * .split_prop, "\n"
+  ), collapse = ""),
   paste(c(
-    "Training negative class size:", dssize_negative * .split_prop
-  ), collapse = " "),
+    "Training negative class size: ", dssize_negative * .split_prop, "\n"
+  ), collapse = ""),
   paste(c(
-    "One fold size:", (dssize_total * .split_prop) / .no_folds
-  ), collapse = " "),
+    "One fold size: ", (dssize_total * .split_prop) / .no_folds, "\n"
+  ), collapse = ""),
   paste(c(
-    "One fold positive class size:", (dssize_positive * .split_prop) / .no_folds
-  ), collapse = " "),
+    "One fold positive class size: ", (dssize_positive * .split_prop) / .no_folds, "\n"
+  ), collapse = ""),
   paste(c(
-    "One fold negative class size:", (dssize_negative * .split_prop) / .no_folds
-  ), collapse = " "),
+    "One fold negative class size: ", (dssize_negative * .split_prop) / .no_folds, "\n"
+  ), collapse = ""),
   paste(c(
-    "Evaluation data set size:", dssize_total * (1 - .split_prop)
-  ), collapse = " "),
+    "Evaluation data set size: ", dssize_total * (1 - .split_prop), "\n"
+  ), collapse = ""),
   paste(c(
-    "Evaluation positive class size:", dssize_positive * (1 - .split_prop)
-  ), collapse = " "),
+    "Evaluation positive class size: ", dssize_positive * (1 - .split_prop), "\n"
+  ), collapse = ""),
   paste(c(
-    "Evaluation negative class size:", dssize_negative * (1 - .split_prop)
-  ), collapse = " ")
+    "Evaluation negative class size: ", dssize_negative * (1 - .split_prop), "\n"
+  ), collapse = "")
 ), quote = FALSE)
 ```
 
 ## Data set undersampling and split
 
 ```{r}
-df <- df # TODO: undersample here!
+table(df$subcorpus, df$class)
+
+bads <- df %>%
+  filter(class == "bad") %>%
+  group_by(subcorpus) %>%
+  mutate(subcorpus_size = n()) %>%
+  ungroup()
+
+max_negative_subcorpus <- bads %>%
+  arrange(-subcorpus_size) %>%
+  head(n = 1)
+
+mns_name <- max_negative_subcorpus %>% pull(subcorpus)
+mns_size <- max_negative_subcorpus %>% pull(subcorpus_size)
+orig_negative_class_size <- bads %>%
+  count() %>%
+  pull(n)
+
+# target undersample of MNS = target neg. size - other-negative-subcorpora-size
+mns_target_size <- dssize_negative - (orig_negative_class_size - mns_size)
+
+mns_sample <- sample(
+  bads %>% filter(subcorpus == mns_name) %>% pull(KUK_ID), mns_target_size
+)
+
+df <- df %>% filter(
+  class == "good" |
+    subcorpus != mns_name |
+    KUK_ID %in% mns_sample
+)
+
+table(df$subcorpus, df$class)
+
+# the split and folds aren't needed at the moment
+# they'll be required in the training phase
 
 df_split <- df %>% initial_split(prop = .split_prop)
 training_set <- training(df_split)
