@@ -51,5 +51,9 @@ rsconnect/
 # lintr
 .lintr
 
+# Python
+.venv
+__pycache__
+
 # Project-specific files
-corpora/
+corpora*/
