@@ -16,3 +16,7 @@
 *ConCo* and *SupCo* seem to use different encoding.
 
 Documents parsed on 2025-03-08 using `czech-pdt-ud-2.15-241121`.
+
+# Measurements
+
+1. `python3 measurements/run_measurements.py -d corpora_selected_conllu/ -u http://localhost:8000/raw -c measurements/measurements.csv`

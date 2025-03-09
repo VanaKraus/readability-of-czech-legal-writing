@@ -127,6 +127,14 @@ df %>%
   arrange(FileName) %>%
   print(n = 80)
 
+# remove FrBo/articles-originated texts from KUKY because:
+#   1. they are duplicates
+#   2. they are actually represented in markdown
+df %>%
+  filter(subcorpus == "KUKY" & str_detect(FileName, "red_|orig_")) %>%
+  pull(FileName)
+df <- df %>%
+  filter(subcorpus != "KUKY" | !str_detect(FileName, "red_|orig_"))
 
 # keep only rows where either Readability or ClarityPursuit isn't NA
 # and exclude ClarityPursuit == TRUE

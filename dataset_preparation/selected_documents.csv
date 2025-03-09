@@ -1,53 +1,23 @@
 KUK_ID,class,FileName,FolderPath,subcorpus,DocumentTitle,Readability,ClarityPursuit,SyllogismBased,SourceDB
-671918e2c6537d54ff0626db,bad,orig_Certifikáty autorizovaných inspektorů,data/KUKY/TXT,KUKY,NA,low,NA,false,SourceDB
-671918e2c6537d54ff0626dc,good,red_Co je to územní plánování_final_přidat odkaz na manuál o RP až bude,data/KUKY/TXT,KUKY,NA,high,NA,false,SourceDB
-671918e2c6537d54ff0626dd,bad,orig_financovani_politickych_stran,data/KUKY/TXT,KUKY,NA,low,NA,false,SourceDB
 671918e2c6537d54ff0626de,bad,Duchody,data/KUKY/TXT,KUKY,NA,low,NA,false,SourceDB
 671918e2c6537d54ff0626df,bad,Odpadni-vody,data/KUKY/TXT,KUKY,NA,low,NA,false,SourceDB
 673b7a37c6537d54ff062b8c,bad,002_Komunalni-odpad,data/KUKY/TXT,KUKY,NA,low,NA,false,SourceDB
-673b7a37c6537d54ff062b8d,good,003_red_Jak dosáhnout změny dopravního značení_final,data/KUKY/TXT,KUKY,NA,high,NA,false,SourceDB
 673b7a37c6537d54ff062b8f,good,006_Chci ZMĚNIT DŮCHOD - V. 21,data/KUKY/TXT,KUKY,NA,high,NA,false,SourceDB
 673b7a37c6537d54ff062b8e,bad,004_Nevyplaceni-mzdy,data/KUKY/TXT,KUKY,NA,low,NA,false,SourceDB
 673b7a37c6537d54ff062b90,bad,008_Policie,data/KUKY/TXT,KUKY,NA,medium,NA,false,SourceDB
-673b7a37c6537d54ff062b95,bad,015_orig_Jak komunikovat s úřady elektronicky,data/KUKY/TXT,KUKY,NA,low,NA,false,SourceDB
-673b7a37c6537d54ff062b92,good,021_red_Jak daleko od hranice pozemku musí být umístěno elektrické vedení,data/KUKY/TXT,KUKY,NA,high,NA,false,SourceDB
-673b7a37c6537d54ff062b9a,bad,013_orig_10 významných práv účastníka správního řízení,data/KUKY/TXT,KUKY,NA,low,NA,false,SourceDB
 673b7a37c6537d54ff062b93,bad,005_Ochrana-spotrebitele,data/KUKY/TXT,KUKY,NA,low,NA,false,SourceDB
-673b7a37c6537d54ff062b91,good,020_red_Jak chránit vody a správně s nimi nakládat_revKZ,data/KUKY/TXT,KUKY,NA,high,NA,false,SourceDB
 673b7a37c6537d54ff062b98,bad,016_Obcane-EU,data/KUKY/TXT,KUKY,NA,low,NA,false,SourceDB
 673b7a37c6537d54ff062b99,good,019_Dětský domov (rodiče) - V. 20,data/KUKY/TXT,KUKY,NA,high,NA,false,SourceDB
-673b7a37c6537d54ff062b9d,bad,030_orig_Co je to a jak probíhá integrované povolování_final,data/KUKY/TXT,KUKY,NA,low,NA,false,SourceDB
 673b7a37c6537d54ff062b97,good,007_DŮCHODOVÉ pojištění - příspěvkové doby - I. 23,data/KUKY/TXT,KUKY,NA,high,NA,false,SourceDB
-673b7a37c6537d54ff062b9c,good,018_red_Co je to úřední deska a jak ji využít,data/KUKY/TXT,KUKY,NA,high,NA,false,SourceDB
-673b7a37c6537d54ff062b96,bad,012_orig_Jak chránit vody a správně s nimi nakládat_revKZ,data/KUKY/TXT,KUKY,NA,low,NA,false,SourceDB
-673b7a37c6537d54ff062b9b,good,"010_red_Guerilla gardening, jak zahradničit na veřejném prostranství (ne)legálně_final",data/KUKY/TXT,KUKY,NA,high,NA,false,SourceDB
-673b7a37c6537d54ff062b9e,good,014_red_Co je to a jak probíhá integrované povolování_final,data/KUKY/TXT,KUKY,NA,high,NA,false,SourceDB
-673b7a37c6537d54ff062b9f,bad,031_orig_Co je to EIA_final,data/KUKY/TXT,KUKY,NA,low,NA,false,SourceDB
-673b7a37c6537d54ff062ba1,good,"023_red_Co dělat, když soused postavil černou stvabu_final, bacha na infrgafiku",data/KUKY/TXT,KUKY,NA,high,NA,false,SourceDB
-673b7a37c6537d54ff062ba2,bad,029_orig_Certifikáty autorizovaných inspektorů,data/KUKY/TXT,KUKY,NA,low,NA,false,SourceDB
-673b7a37c6537d54ff062ba4,bad,032_orig_Co je to úřední deska a jak ji využít,data/KUKY/TXT,KUKY,NA,low,NA,false,SourceDB
 673b7a37c6537d54ff062ba3,bad,024_Opatrovnictvi,data/KUKY/TXT,KUKY,NA,low,NA,false,SourceDB
 673b7a37c6537d54ff062ba9,bad,047_Davky-pro-osoby-se-zdravotnim-postizenim,data/KUKY/TXT,KUKY,NA,low,NA,false,SourceDB
-673b7a37c6537d54ff062ba7,bad,026_orig_Jak jedná spolek navenek,data/KUKY/TXT,KUKY,NA,low,NA,false,SourceDB
-673b7a37c6537d54ff062baa,good,041_red_Hlukové limity a udělování výjimek_prefinal,data/KUKY/TXT,KUKY,NA,high,NA,false,SourceDB
-673b7a37c6537d54ff062ba8,bad,027_orig_Jak dosáhnout odpovědnosti úředníka za škodu,data/KUKY/TXT,KUKY,NA,medium,NA,false,SourceDB
-673b7a38c6537d54ff062bae,bad,038_orig_Co je to korupce a klientelismus,data/KUKY/TXT,KUKY,NA,low,NA,false,SourceDB
-673b7a38c6537d54ff062bad,good,025_red_GDPR Jak právo chrání osobní údaje_final,data/KUKY/TXT,KUKY,NA,high,NA,false,SourceDB
 673b7a38c6537d54ff062baf,good,042_BYDLENÍ - X. 23,data/KUKY/TXT,KUKY,NA,high,NA,false,SourceDB
-673b7a38c6537d54ff062bac,bad,"028_orig_Co dělat, když soused postavil černou stvabu_final, bacha na infrgafiku",data/KUKY/TXT,KUKY,NA,low,NA,false,SourceDB
-673b7a37c6537d54ff062bab,good,034_red_Jak dosáhnout zrušení stanoviska EIA_final,data/KUKY/TXT,KUKY,NA,high,NA,false,SourceDB
 673b7a38c6537d54ff062bb4,bad,017_Domaci-nasili,data/KUKY/TXT,KUKY,NA,low,NA,false,SourceDB
 673b7a38c6537d54ff062bb3,bad,043_Plisen-a-zavady-v-byte,data/KUKY/TXT,KUKY,NA,low,NA,false,SourceDB
-673b7a38c6537d54ff062bb1,good,036_red_Dotčený vlastník - Kdo to je a jaká má v územním plánování práva_final,data/KUKY/TXT,KUKY,NA,high,NA,false,SourceDB
 673b7a38c6537d54ff062bb0,good,040_Hluk - VI. 20,data/KUKY/TXT,KUKY,NA,high,NA,false,SourceDB
-673b7a38c6537d54ff062bb8,good,059_red_10 významných práv účastníka správního řízení,data/KUKY/TXT,KUKY,NA,high,NA,false,SourceDB
 673b7a38c6537d54ff062bb7,bad,035_Hluk,data/KUKY/TXT,KUKY,NA,low,NA,false,SourceDB
-673b7a38c6537d54ff062bb6,good,044_red_financovani_politickych_stran úprava 2021,data/KUKY/TXT,KUKY,NA,high,NA,false,SourceDB
 673b7a38c6537d54ff062bb9,bad,033_Davky-pomoci-v-hmotne-nouzi,data/KUKY/TXT,KUKY,NA,low,NA,false,SourceDB
-673b7a38c6537d54ff062bb5,bad,"053_orig_Guerilla gardening, jak zahradničit na veřejném prostranství (ne)legálně_final",data/KUKY/TXT,KUKY,NA,low,NA,false,SourceDB
 673b7a38c6537d54ff062bbb,bad,050_Oddluzeni,data/KUKY/TXT,KUKY,NA,low,NA,false,SourceDB
-673b7a38c6537d54ff062bbe,bad,051_orig_Co je to regulační plán a jak dosáhnout jeho přijetí_původní,data/KUKY/TXT,KUKY,NA,low,NA,false,SourceDB
-673b7a38c6537d54ff062bc2,good,049_red_CO je černá stvaba a jak ji ponat,data/KUKY/TXT,KUKY,NA,high,NA,false,SourceDB
 673b7a38c6537d54ff062bd5,good,058_DĚTI mezi rodiči - IV. 21,data/KUKY/TXT,KUKY,NA,high,NA,false,SourceDB
 66082017c6537d54ff05e159,good,ockovani-1_kusv,data/KUKY/TXT,KUKY,NA,high,NA,false,SourceDB
 66082017c6537d54ff05e15a,good,stavarska-1_kusv,data/KUKY/TXT,KUKY,NA,high,NA,false,SourceDB
@@ -322,7 +292,6 @@ CzCDC_SupC004667,bad,rozhodnuti-6_Tdo_947_2006,https://lindat.mff.cuni.cz/reposi
 CzCDC_SupC004894,bad,rozhodnuti-6_Tdo_847_2003,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,6 Tdo 847/2003,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupC005504,bad,rozhodnuti-6_Tdo_578_2012,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,6 Tdo 578/2012,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupC005639,bad,rozhodnuti-6_Tdo_520_2011,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,6 Tdo 520/2011,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
-CzCDC_SupC006028,bad,rozhodnuti-6_Tdo_350_2005,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,6 Tdo 350/2005,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupC006093,bad,rozhodnuti-6_Tdo_322_2010,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,6 Tdo 322/2010,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupC006406,bad,rozhodnuti-6_Tdo_188_2005,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,6 Tdo 188/2005,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupC006505,bad,rozhodnuti-6_Tdo_1624_2008,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,6 Tdo 1624/2008,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
@@ -333,7 +302,6 @@ CzCDC_SupA011979,bad,0018_6Azs_13_20131118165818_prevedeno,https://lindat.mff.cu
 CzCDC_SupA012710,bad,0027_6As__100_20110405033033_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,6 As 27/2010-210,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupA014171,bad,0015_6Ads_1300014_20180208134818_20180413122113_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,6 Ads 15/2013-14,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupA014217,bad,0139_6Ads_110_20120103024034_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,6 Ads 139/2011-82,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
-CzCDC_SupC007898,bad,rozhodnuti-5_Tdo_944_2013,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,5 Tdo 944/2013,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupC008414,bad,rozhodnuti-5_Tdo_438_2017,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,5 Tdo 438/2017,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupC008731,bad,rozhodnuti-5_Tdo_1595_2014,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,5 Tdo 1595/2014,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupC008990,bad,rozhodnuti-5_Tdo_1270_2017,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,5 Tdo 1270/2017,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
@@ -350,7 +318,6 @@ CzCDC_SupA016132,bad,0110_5As__130_20140220080930_prevedeno,https://lindat.mff.c
 CzCDC_SupA016193,bad,0001_5As__0900051A_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,5 As 1/2009-51,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupA016211,bad,0004_5Aps_11_20111003095507_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,5 Aps 4/2011-326,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupA016272,bad,0007_5Ans_130_20131205101157_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,5 Ans 7/2013-21,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
-CzCDC_SupA016439,bad,0083_5Afs_0700054_20180319105944_20180423160023_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,5 Afs 83/2007-54,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupA016617,bad,0060_5Afs_1700060_20180205134356_20180207104017_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,5 Afs 60/2017-60,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupA016812,bad,0039_5Afs_110_20120228095443_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,5 Afs 39/2011-162,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupA016831,bad,0037_5Afs_0800071A_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,5 Afs 37/2008-71,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
@@ -418,7 +385,6 @@ CzCDC_SupC025409,bad,rozhodnuti-3_Tdo_1372_2009,https://lindat.mff.cuni.cz/repos
 CzCDC_SupC025438,bad,rozhodnuti-3_Tdo_1354_2009,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,3 Tdo 1354/2009,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupC025875,bad,rozhodnuti-3_Tdo_1105_2012,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,3 Tdo 1105/2012,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupA021276,bad,0001_3Azs_110_20110214091930_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,3 Azs 1/2011-94,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
-CzCDC_SupA021737,bad,0228_3As__1600033_20161103131212_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,3 As 228/2016-33,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupA021775,bad,0208_3As__1500024_20160104145407_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,3 As 208/2015-24,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupA022508,bad,0057_3Ads_1000_7333fb42_b1a1_4627_915c_bec7f218d675_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,3 Ads 57/2010-115,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupA022831,bad,0122_3Ads_120_20131107140817_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,3 Ads 122/2012-48,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
@@ -473,7 +439,6 @@ CzCDC_SupC044152,bad,rozhodnuti-23_Cdo_2919_2011,https://lindat.mff.cuni.cz/repo
 CzCDC_SupC045741,bad,rozhodnuti-22_Cdo_515_2004,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,22 Cdo 515/2004,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupC046596,bad,rozhodnuti-22_Cdo_3565_2013,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,22 Cdo 3565/2013,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupC046617,bad,rozhodnuti-22_Cdo_3533_2013,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,22 Cdo 3533/2013,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
-CzCDC_SupC046944,bad,rozhodnuti-22_Cdo_308_2017,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,22 Cdo 308/2017,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupC047591,bad,rozhodnuti-22_Cdo_2338_2006,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,22 Cdo 2338/2006,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupC047691,bad,rozhodnuti-22_Cdo_2233_2005,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,22 Cdo 2233/2005,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupC047982,bad,rozhodnuti-22_Cdo_1929_2006,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,22 Cdo 1929/2006,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
@@ -524,7 +489,6 @@ CzCDC_ConC041091,bad,4-34-13_1,https://lindat.mff.cuni.cz/repository/xmlui/bitst
 CzCDC_ConC041256,bad,4-330-03,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/ConCo.zip,CzCDC,IV. US 330/03,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_ConC041857,bad,4-3022-17_1,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/ConCo.zip,CzCDC,IV. US 3022/17,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_ConC042410,bad,4-2766-13_1,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/ConCo.zip,CzCDC,IV. US 2766/13,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
-CzCDC_ConC042580,bad,4-269-01,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/ConCo.zip,CzCDC,IV. US 269/01,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_ConC043532,bad,4-222-99,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/ConCo.zip,CzCDC,IV. US 222/99,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_ConC043735,bad,4-213-94,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/ConCo.zip,CzCDC,IV. US 213/94,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_ConC043926,bad,4-205-97,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/ConCo.zip,CzCDC,IV. US 205/97,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
@@ -541,11 +505,9 @@ CzCDC_ConC050288,bad,3-332-06,https://lindat.mff.cuni.cz/repository/xmlui/bitstr
 CzCDC_ConC051090,bad,3-2882-17_1,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/ConCo.zip,CzCDC,III. US 2882/17,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_ConC051475,bad,3-2684-07_1,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/ConCo.zip,CzCDC,III. US 2684/07,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_ConC053232,bad,3-1807-11_1,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/ConCo.zip,CzCDC,III. US 1807/11,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
-CzCDC_ConC053342,bad,3-1756-13_1,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/ConCo.zip,CzCDC,III. US 1756/13,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_ConC053720,bad,3-157-12_1,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/ConCo.zip,CzCDC,III. US 157/12,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_ConC054580,bad,3-117-03,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/ConCo.zip,CzCDC,III. US 117/03,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_ConC054604,bad,3-1154-07_1,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/ConCo.zip,CzCDC,III. US 1154/07,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
-CzCDC_ConC055875,bad,2-679-10_1,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/ConCo.zip,CzCDC,II. US 679/10,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_ConC055890,bad,2-675-13_1,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/ConCo.zip,CzCDC,II. US 675/13,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_ConC056155,bad,2-629-06_2,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/ConCo.zip,CzCDC,II. US 629/06,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_ConC056447,bad,2-579-02,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/ConCo.zip,CzCDC,II. US 579/02,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
@@ -593,10 +555,8 @@ CzCDC_SupC062724,bad,rozhodnuti-6_Tdo_415_2003,https://lindat.mff.cuni.cz/reposi
 CzCDC_SupA038806,bad,0031_6Azs_0500052A_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,6 Azs 31/2005-52,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupA038880,bad,0274_6Azs_0500062A_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,6 Azs 274/2005-62,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupA039081,bad,0002_6Azs_0500045A_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,6 Azs 2/2005-45,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
-CzCDC_SupA039171,bad,0165_6Azs_0500041A_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,6 Azs 165/2005-41,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupA039304,bad,0110_6Azs_0400075A_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,6 Azs 110/2004-75,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupA039373,bad,0081_6As__1300017_20180212164533_20180411140014_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,6 As 81/2013-17,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
-CzCDC_SupA039823,bad,0017_6As__13_20131022161042_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,6 As 17/2013-28,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupA039971,bad,0006_6Ans_1000160A_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,6 Ans 6/2010-160,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupA040443,bad,0049_6Ads_140_20140422103640_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,6 Ads 49/2014-18,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupA041011,bad,0006_6A___0200065A_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,6 A 6/2002-65,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
@@ -620,7 +580,6 @@ CzCDC_SupA045025,bad,0074_4Ads_0600040A_prevedeno,https://lindat.mff.cuni.cz/rep
 CzCDC_SupA045076,bad,0066_4Ads_0400024A_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,4 Ads 66/2004-24,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupA045169,bad,0050_4Ads_0400051A_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,4 Ads 50/2004-51,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupA045644,bad,0010_4Ads_0700054A_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,4 Ads 10/2007-54,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
-CzCDC_SupC067576,bad,rozhodnuti-33_Odo_975_2005,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,33 Odo 975/2005,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupC067762,bad,rozhodnuti-33_Odo_826_2003,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,33 Odo 826/2003,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupC068829,bad,rozhodnuti-33_Odo_137_2004,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,33 Odo 137/2004,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupC069347,bad,rozhodnuti-33_Cdo_761_2014,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,33 Cdo 761/2014,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
@@ -642,12 +601,10 @@ CzCDC_SupC076555,bad,rozhodnuti-30_Cdo_2141_2009,https://lindat.mff.cuni.cz/repo
 CzCDC_SupC076735,bad,rozhodnuti-30_Cdo_1997_2002,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,30 Cdo 1997/2002,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupC078019,bad,rozhodnuti-3_Tvo_3_2001,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,3 Tvo 3/2001,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupC078592,bad,rozhodnuti-3_Tdo_633_2013,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,3 Tdo 633/2013,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
-CzCDC_SupC078620,bad,rozhodnuti-3_Tdo_613_2011,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,3 Tdo 613/2011,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupC079327,bad,rozhodnuti-3_Tdo_1598_2005,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,3 Tdo 1598/2005,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupA046463,bad,0177_3Azs_0500074A_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,3 Azs 177/2005-74,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupA046479,bad,0169_3Azs_0600072A_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,3 Azs 169/2006-72,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupA046678,bad,0098_3As__120_20130321122505_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,3 As 98/2012-24,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
-CzCDC_SupA046780,bad,0062_3As__0700156A_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,3 As 62/2007-156,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupA046890,bad,0040_3As__1600049_20170124092939_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,3 As 40/2016-49,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupA047403,bad,0001_3Ans_0700141A_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,3 Ans 1/2007-141,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupA048186,bad,0144_3Ads_0700055A_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,3 Ads 144/2007-55,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
@@ -672,7 +629,6 @@ CzCDC_SupC085893,bad,rozhodnuti-28_Cdo_5078_2009,https://lindat.mff.cuni.cz/repo
 CzCDC_SupC087068,bad,rozhodnuti-28_Cdo_2281_2005,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,28 Cdo 2281/2005,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupC087075,bad,rozhodnuti-28_Cdo_2272_2002,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,28 Cdo 2272/2002,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupC087257,bad,rozhodnuti-28_Cdo_2086_2006,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,28 Cdo 2086/2006,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
-CzCDC_SupC088075,bad,rozhodnuti-28_Cdo_1339_2007,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,28 Cdo 1339/2007,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupC088158,bad,rozhodnuti-28_Cdo_1259_2005,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,28 Cdo 1259/2005,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupC088540,bad,rozhodnuti-26_Nd_88_2014,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,26 Nd 88/2014,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupC088637,bad,rozhodnuti-26_Nd_262_2007,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,26 Nd 262/2007,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
@@ -709,7 +665,6 @@ CzCDC_SupA049484,bad,0002_2Aps_0400069A_prevedeno,https://lindat.mff.cuni.cz/rep
 CzCDC_SupA049526,bad,0095_2Afs_0500110A_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,2 Afs 95/2005-110,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupA049738,bad,0027_2Afs_0300055A_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,2 Afs 27/2003-55,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupC107723,bad,rozhodnuti-13_To_325_2003,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,13 To 325/2003,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
-CzCDC_SupC107785,bad,rozhodnuti-11_Zp_31_99,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,11 Zp 31/99,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupC107997,bad,rozhodnuti-11_Tvo_58_2005,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,11 Tvo 58/2005,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupC108868,bad,rozhodnuti-11_Tdo_1467_2003,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,11 Tdo 1467/2003,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupC110579,bad,rozhodnuti-11_Tcu_33_2006,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,11 Tcu 33/2006,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
@@ -809,6 +764,7 @@ Fart_orig_00244,good,orig_Co byste měli vědět o nahlížení do spisu_akt2021
 Fart_orig_00245,bad,orig_Správní exekuce,data/FrBo/articles/TXT,FrBo,Správní exekuce,medium,FALSE,NA,FrBo_articles
 Fart_orig_00248,good,orig_Podávání podnětů správním orgánům,data/FrBo/articles/TXT,FrBo,Podávání podnětů správním orgánům,high,FALSE,NA,FrBo_articles
 Fart_orig_00249,good,orig_10 významných práv účastníka správního řízení,data/FrBo/articles/TXT,FrBo,10 významných práv účastníka správního řízení,high,FALSE,NA,FrBo_articles
+Fart_orig_00253,bad,orig_Certifikáty autorizovaných inspektorů,data/FrBo/articles/TXT,FrBo,Certifikáty autorizovaných inspektorů,medium,FALSE,NA,FrBo_articles
 Fart_orig_00254,bad,orig_jak se bránit územnímu souhlasu a ohlášení stavby,data/FrBo/articles/TXT,FrBo,Jak se bránit proti územnímu souhlasu a ohlášení?,medium,FALSE,NA,FrBo_articles
 Fart_orig_00259,bad,orig_Jak se bránit neposkytnutí projektové dokumentace,data/FrBo/articles/TXT,FrBo,Jak se bránit neposkytnutí projektové dokumentace,medium,FALSE,NA,FrBo_articles
 Fart_orig_00262,good,orig_Svépomoc při ochraně subjektivních práv_final,data/FrBo/articles/TXT,FrBo,Kdy lze k ochraně svých práv použít svépomoci?,high,FALSE,NA,FrBo_articles
@@ -895,6 +851,7 @@ Fart_orig_4CAd1,bad,orig_Neinformování o zahájení řízení podle § 70 ZOPK
 Fart_orig_5938a,bad,"orig_Mohou spolky ve správních žalobách používat věcné argumenty_final, odkaz na soudní ochrana spolků",data/FrBo/articles/TXT,FrBo,Mohou spolky ve správních žalobách používat věcné argumenty?,NA,FALSE,NA,FrBo_articles
 Fart_orig_5938b,bad,orig_Mohou spolky ve správních žalobách používat věcné argumenty_final,data/FrBo/articles/TXT,FrBo,Mohou spolky ve správních žalobách používat věcné argumenty?,medium,FALSE,NA,FrBo_articles
 Fart_orig_8KpaB,good,orig_Jak se zapojit do procesu přijímání plánů povodí,data/FrBo/articles/TXT,FrBo,Jak se zapojit do procesu přijímání plánů povodí?,high,FALSE,NA,FrBo_articles
+Fart_orig_9hMND,bad,orig_financovani_politickych_stran,data/FrBo/articles/TXT,FrBo,Financování politických stran,medium,FALSE,NA,FrBo_articles
 Fart_orig_BxqFg,bad,orig_Řešení střetu zájmů při povolování těžby_k úpravám,data/FrBo/articles/TXT,FrBo,Jak se řeší střet různých zájmů při povolování těžby?,medium,FALSE,NA,FrBo_articles
 Fart_orig_J38kK,good,orig_Jak se bránit rušení nočního klidu(2),data/FrBo/articles/TXT,FrBo,Jak se bránit rušení nočního klidu,high,FALSE,NA,FrBo_articles
 Fart_orig_OmVfN,bad,orig_Sousedské vztahy,data/FrBo/articles/TXT,FrBo,Sousedské vztahy,medium,FALSE,NA,FrBo_articles
@@ -984,6 +941,7 @@ Fart_red_05619,good,red_muze_obec_zakazat_spalovani_nevhodnych_materialu,data/Fr
 Fart_red_05620,good,red_Jak se bránit obtěžování kouřem a pálením odpadu,data/FrBo/articles/TXT,FrBo,Jak se bránit obtěžování kouřem a pálením odpadu?;Životní prostředí;Ochrana ovzduší a vod,high,TRUE,NA,FrBo_articles
 Fart_red_05643,good,red_Jak podat stížnost na nevhodné chování úředníků,data/FrBo/articles/TXT,FrBo,Jak a kdy podat stížnost na nevhodné chování úředníků?;Správní řízení;Úřady a soudy,high,TRUE,NA,FrBo_articles
 Fart_red_05648,good,red_Kompletní průvodce pořizováním nahrávek veřejné správy,data/FrBo/articles/TXT,FrBo,Kompletní průvodce pořizováním nahrávek veřejné správy;Fungování obcí a úřadů;Právo na informace,high,TRUE,NA,FrBo_articles
+Fart_red_05663,good,red_Co je to územní plánování_final_přidat odkaz na manuál o RP až bude,data/FrBo/articles/TXT,FrBo,Co je to územní plánování?;Územní plánování;Územní plánování,high,TRUE,NA,FrBo_articles
 Fart_red_05714,good,"red_ak se zapojit do územního plánování_final, odkazy",data/FrBo/articles/TXT,FrBo,Jak se zapojit do územního plánování;Územní plánování;Územní plánování,high,TRUE,NA,FrBo_articles
 Fart_red_05793,good,red_Jak probíhá správní řízení,data/FrBo/articles/TXT,FrBo,Jak probíhá správní řízení?;Správní řízení;Správní řízení,high,TRUE,NA,FrBo_articles
 Fart_red_05804,good,red_Jaké informace můžete najít na webu obce_final,data/FrBo/articles/TXT,FrBo,Jaké informace můžete najít na webu obce?;Právo na informace;Právo na informace,high,TRUE,NA,FrBo_articles
