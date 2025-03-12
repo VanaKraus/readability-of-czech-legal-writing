@@ -1,0 +1,177 @@
+---
+title: plots!
+output: pdf_document
+---
+
+# Class
+
+```{r}
+library(tidyverse)
+
+df <- read_csv("measurements.csv")
+
+df %>% ggplot(aes(x = class, y = activity)) +
+  geom_boxplot()
+df %>% ggplot(aes(x = class, y = ari)) +
+  geom_boxplot()
+df %>% ggplot(aes(x = class, y = atl)) +
+  geom_boxplot()
+df %>% ggplot(aes(x = class, y = char_count)) +
+  geom_boxplot()
+df %>% ggplot(aes(x = class, y = cli)) +
+  geom_boxplot()
+df %>% ggplot(aes(x = class, y = entropy)) +
+  geom_boxplot()
+df %>% ggplot(aes(x = class, y = fkgl)) +
+  geom_boxplot()
+df %>% ggplot(aes(x = class, y = fre)) +
+  geom_boxplot()
+df %>% ggplot(aes(x = class, y = gf)) +
+  geom_boxplot()
+df %>% ggplot(aes(x = class, y = hpoint)) +
+  geom_boxplot()
+df %>% ggplot(aes(x = class, y = maentropy)) +
+  geom_boxplot()
+df %>% ggplot(aes(x = class, y = maentropy_v)) +
+  geom_boxplot()
+df %>% ggplot(aes(x = class, y = mamr)) +
+  geom_boxplot()
+df %>% ggplot(aes(x = class, y = mattr)) +
+  geom_boxplot()
+df %>% ggplot(aes(x = class, y = mattr_v)) +
+  geom_boxplot()
+df %>% ggplot(aes(x = class, y = num_hapax)) +
+  geom_boxplot()
+df %>% ggplot(aes(x = class, y = sent_count)) +
+  geom_boxplot()
+df %>% ggplot(aes(x = class, y = smog)) +
+  geom_boxplot()
+df %>% ggplot(aes(x = class, y = syllab_count)) +
+  geom_boxplot()
+df %>% ggplot(aes(x = class, y = ttr)) +
+  geom_boxplot()
+df %>% ggplot(aes(x = class, y = verb_dist)) +
+  geom_boxplot()
+df %>% ggplot(aes(x = class, y = word_count)) +
+  geom_boxplot()
+```
+
+# Readability
+
+```{r}
+df %>% ggplot(aes(x = activity, y = Readability)) +
+  geom_boxplot() +
+  facet_grid(subcorpus ~ .)
+df %>% ggplot(aes(x = ari, y = Readability)) +
+  geom_boxplot() +
+  facet_grid(subcorpus ~ .)
+df %>% ggplot(aes(x = atl, y = Readability)) +
+  geom_boxplot() +
+  facet_grid(subcorpus ~ .)
+df %>% ggplot(aes(x = char_count, y = Readability)) +
+  geom_boxplot() +
+  facet_grid(subcorpus ~ .)
+df %>% ggplot(aes(x = cli, y = Readability)) +
+  geom_boxplot() +
+  facet_grid(subcorpus ~ .)
+df %>% ggplot(aes(x = entropy, y = Readability)) +
+  geom_boxplot() +
+  facet_grid(subcorpus ~ .)
+df %>% ggplot(aes(x = fkgl, y = Readability)) +
+  geom_boxplot() +
+  facet_grid(subcorpus ~ .)
+df %>% ggplot(aes(x = fre, y = Readability)) +
+  geom_boxplot() +
+  facet_grid(subcorpus ~ .)
+df %>% ggplot(aes(x = gf, y = Readability)) +
+  geom_boxplot() +
+  facet_grid(subcorpus ~ .)
+df %>% ggplot(aes(x = hpoint, y = Readability)) +
+  geom_boxplot() +
+  facet_grid(subcorpus ~ .)
+df %>% ggplot(aes(x = maentropy, y = Readability)) +
+  geom_boxplot() +
+  facet_grid(subcorpus ~ .)
+df %>% ggplot(aes(x = maentropy_v, y = Readability)) +
+  geom_boxplot() +
+  facet_grid(subcorpus ~ .)
+df %>% ggplot(aes(x = mamr, y = Readability)) +
+  geom_boxplot() +
+  facet_grid(subcorpus ~ .)
+df %>% ggplot(aes(x = mattr, y = Readability)) +
+  geom_boxplot() +
+  facet_grid(subcorpus ~ .)
+df %>% ggplot(aes(x = mattr_v, y = Readability)) +
+  geom_boxplot() +
+  facet_grid(subcorpus ~ .)
+df %>% ggplot(aes(x = num_hapax, y = Readability)) +
+  geom_boxplot() +
+  facet_grid(subcorpus ~ .)
+df %>% ggplot(aes(x = sent_count, y = Readability)) +
+  geom_boxplot() +
+  facet_grid(subcorpus ~ .)
+df %>% ggplot(aes(x = smog, y = Readability)) +
+  geom_boxplot() +
+  facet_grid(subcorpus ~ .)
+df %>% ggplot(aes(x = syllab_count, y = Readability)) +
+  geom_boxplot() +
+  facet_grid(subcorpus ~ .)
+df %>% ggplot(aes(x = ttr, y = Readability)) +
+  geom_boxplot() +
+  facet_grid(subcorpus ~ .)
+df %>% ggplot(aes(x = verb_dist, y = Readability)) +
+  geom_boxplot() +
+  facet_grid(subcorpus ~ .)
+df %>% ggplot(aes(x = word_count, y = Readability)) +
+  geom_boxplot() +
+  facet_grid(subcorpus ~ .)
+```
+
+# ClarityPursuit
+
+```{r}
+df %>% ggplot(aes(x = ClarityPursuit, y = activity)) +
+  geom_boxplot()
+df %>% ggplot(aes(x = ClarityPursuit, y = ari)) +
+  geom_boxplot()
+df %>% ggplot(aes(x = ClarityPursuit, y = atl)) +
+  geom_boxplot()
+df %>% ggplot(aes(x = ClarityPursuit, y = char_count)) +
+  geom_boxplot()
+df %>% ggplot(aes(x = ClarityPursuit, y = cli)) +
+  geom_boxplot()
+df %>% ggplot(aes(x = ClarityPursuit, y = entropy)) +
+  geom_boxplot()
+df %>% ggplot(aes(x = ClarityPursuit, y = fkgl)) +
+  geom_boxplot()
+df %>% ggplot(aes(x = ClarityPursuit, y = fre)) +
+  geom_boxplot()
+df %>% ggplot(aes(x = ClarityPursuit, y = gf)) +
+  geom_boxplot()
+df %>% ggplot(aes(x = ClarityPursuit, y = hpoint)) +
+  geom_boxplot()
+df %>% ggplot(aes(x = ClarityPursuit, y = maentropy)) +
+  geom_boxplot()
+df %>% ggplot(aes(x = ClarityPursuit, y = maentropy_v)) +
+  geom_boxplot()
+df %>% ggplot(aes(x = ClarityPursuit, y = mamr)) +
+  geom_boxplot()
+df %>% ggplot(aes(x = ClarityPursuit, y = mattr)) +
+  geom_boxplot()
+df %>% ggplot(aes(x = ClarityPursuit, y = mattr_v)) +
+  geom_boxplot()
+df %>% ggplot(aes(x = ClarityPursuit, y = num_hapax)) +
+  geom_boxplot()
+df %>% ggplot(aes(x = ClarityPursuit, y = sent_count)) +
+  geom_boxplot()
+df %>% ggplot(aes(x = ClarityPursuit, y = smog)) +
+  geom_boxplot()
+df %>% ggplot(aes(x = ClarityPursuit, y = syllab_count)) +
+  geom_boxplot()
+df %>% ggplot(aes(x = ClarityPursuit, y = ttr)) +
+  geom_boxplot()
+df %>% ggplot(aes(x = ClarityPursuit, y = verb_dist)) +
+  geom_boxplot()
+df %>% ggplot(aes(x = ClarityPursuit, y = word_count)) +
+  geom_boxplot()
+```

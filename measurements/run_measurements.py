@@ -66,10 +66,17 @@ if __name__ == "__main__":
             .astype({"value": "float"})
         )
 
+        rules_found = re.findall(r"(Rule[a-zA-Z]+):([0-9a-f]{8})", conllu)
+        df_rules = (
+            pd.DataFrame(rules_found, columns=["rule", "id"])
+            .drop_duplicates()
+            .reset_index(drop=True)
+        )
+
         log("Ru")
 
         # rule counts
-        df_counts = df_measur.groupby("rule").agg({"id": "nunique"})
+        df_counts = df_rules.groupby("rule").agg({"id": "nunique"})
 
         for count_row in df_counts.iterrows():
             df_row[count_row[0]] = count_row[1]["id"]
