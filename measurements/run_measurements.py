@@ -7,7 +7,6 @@ import re
 
 import pandas as pd
 import requests
-from nltk.corpus import PlaintextCorpusReader
 
 
 def log(str, newline: bool = False):
@@ -20,25 +19,35 @@ def log(str, newline: bool = False):
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("-u", "--url", nargs=1, type=str, help="/raw REST endpoint")
-    parser.add_argument("-d", "--conllu", nargs=1, type=str, help=".conllu directory")
+    parser.add_argument("-s", "--selected", nargs=1, type=str, help=".conllu directory")
     parser.add_argument("-c", "--csv", nargs=1, type=str, help="target CSV name")
 
     args = parser.parse_args(sys.argv[1:])
 
     df = None
 
-    reader = PlaintextCorpusReader(args.conllu[0], r".*\.conllu")
+    # reader = PlaintextCorpusReader(args.conllu[0], r".*\.conllu")
 
-    for file in reader.fileids():
-        log(file)
+    df_selected_documents = pd.read_csv(args.selected[0])
+    df_selected_documents["target_fpath_conllu"] = (
+        df_selected_documents["target_fpath"]
+        .str.replace("corpora_selected_txt", "corpora_selected_conllu")
+        .str.replace(".txt", ".conllu")
+    )
+
+    for sd_row in df_selected_documents.iterrows():
+        fpath_txt = sd_row[1]["target_fpath"]
+        fpath_conllu = sd_row[1]["target_fpath_conllu"]
+
+        log(fpath_conllu)
 
         # request
-        fpath = os.path.join(args.conllu[0], file)
-        df_row = {"fpath": fpath}
+        # fpath = os.path.join(args.conllu[0], file)
+        df_row = {"fpath": fpath_txt}
 
         request = requests.post(
             args.url[0] + "?profile=minimal_verbose",
-            files={"file": open(fpath, "r")},
+            files={"file": open(fpath_conllu, "r")},
         )
         result = request.json()
 
@@ -115,4 +124,13 @@ if __name__ == "__main__":
 
     df = df[new_order]
 
-    df.to_csv(args.csv[0], index=False)
+    df_selected_documents = df_selected_documents.drop(columns=["target_fpath_conllu"])
+
+    df_result = (
+        df_selected_documents.rename(columns={"target_fpath": "fpath"})
+        .set_index("fpath")
+        .join(df.set_index("fpath"))
+        .reset_index()
+    )
+
+    df_result.to_csv(args.csv[0], index=False)
