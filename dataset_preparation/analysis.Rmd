@@ -127,6 +127,42 @@ df %>%
   arrange(FileName) %>%
   print(n = 80)
 
+
+# search for FrBo duplicates
+df_frbo_duplicates <- df %>%
+  filter(str_detect(FileName, "red_|orig_")) %>%
+  mutate(new_fname = str_remove(FileName, "^[0-9]{3}_")) %>%
+  group_by(new_fname) %>%
+  mutate(n = n()) %>%
+  ungroup() %>%
+  filter(n >= 2)
+
+all_duplicates <- df_frbo_duplicates %>% pull(FileName)
+
+df_frbo_dup_wide <- df_frbo_duplicates %>%
+  select(new_fname, subcorpus, Readability, n) %>%
+  distinct(new_fname, subcorpus, Readability, n) %>%
+  pivot_wider(
+    names_from = subcorpus,
+    values_from = Readability,
+    names_prefix = "Readability_"
+  )
+
+table(df_frbo_dup_wide$Readability_KUKY, df_frbo_dup_wide$Readability_FrBo)
+
+# this is valid UNDER THE CONDITION that we construct the "good" class
+# out of high-readability texts only
+good_duplicates <- df_frbo_dup_wide %>%
+  filter(
+    Readability_KUKY == Readability_FrBo | (
+      (Readability_KUKY == "medium" | Readability_KUKY == "low") &
+        (Readability_FrBo == "medium")
+    )
+  ) %>%
+  pull(new_fname)
+
+bad_duplicates <- setdiff(all_duplicates, good_duplicates)
+
 # remove FrBo/articles-originated texts from KUKY because:
 #   1. they are duplicates
 #   2. they are actually represented in markdown
@@ -135,6 +171,9 @@ df %>%
   pull(FileName)
 df <- df %>%
   filter(subcorpus != "KUKY" | !str_detect(FileName, "red_|orig_"))
+
+# remove FrBo articles with different readability assessments by KUKY and FrBo
+df <- df %>% filter(!(FileName %in% bad_duplicates))
 
 # keep only rows where either Readability or ClarityPursuit isn't NA
 # and exclude ClarityPursuit == TRUE
