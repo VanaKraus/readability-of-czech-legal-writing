@@ -101,7 +101,7 @@ if __name__ == "__main__":
 
             # represent missing variation coefficient by -1 to remain consistent with the metrics
             var_coeff = measur_row[1]["var_coeff"].values[0]
-            df_row[f"{meas_name}_v"] = var_coeff or -1
+            df_row[f"{meas_name}.v"] = var_coeff or -1
 
         log("RuM")
 

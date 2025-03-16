@@ -208,7 +208,7 @@ df <- df %>%
 ```{r}
 .split_prop <- 4 / 5 # proportion of testing data in the dataset
 .no_folds <- 10 # no. of folds in v-fold cross-validation
-.balance <- 1 / 3 # proportion of positive samples in the target dataset
+.balance <- 4 / 9 # proportion of positive samples in the target dataset
 
 dssize_positive <- count(df %>% filter(class == "good"))[[1, 1]]
 dssize_total <- dssize_positive / .balance
