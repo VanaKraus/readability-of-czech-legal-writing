@@ -1,0 +1,818 @@
+---
+title: Classifier
+output: pdf_document
+---
+
+```{r}
+set.seed(42)
+
+library(tidyverse)
+library(tidymodels)
+```
+
+# Load and tidy data
+
+```{r}
+data <- read_csv("../measurements/measurements.csv")
+
+data %>% ggplot(aes(x = subcorpus, word_count)) +
+  geom_boxplot()
+data %>% ggplot(aes(x = class, word_count)) +
+  geom_boxplot()
+
+data_clean <- data %>%
+  select(!c(
+    fpath,
+    KUK_ID,
+    FileName,
+    FolderPath,
+    # subcorpus,
+    DocumentTitle,
+    ClarityPursuit,
+    Readability,
+    SyllogismBased,
+    SourceDB
+  )) %>%
+  # replace -1s in variation coefficients with NAs
+  mutate(across(c(
+    `RuleDoubleAdpos.max_allowable_distance.v`,
+    `RuleTooManyNegations.max_negation_frac.v`,
+    `RuleTooManyNegations.max_allowable_negations.v`,
+    `RuleTooManyNominalConstructions.max_noun_frac.v`,
+    `RuleTooManyNominalConstructions.max_allowable_nouns.v`,
+    `RuleCaseRepetition.max_repetition_count.v`,
+    `RuleCaseRepetition.max_repetition_frac.v`,
+    `RulePredSubjDistance.max_distance.v`,
+    `RulePredObjDistance.max_distance.v`,
+    `RuleInfVerbDistance.max_distance.v`,
+    `RuleMultiPartVerbs.max_distance.v`,
+    `RuleLongSentences.max_length.v`,
+    `RulePredAtClauseBeginning.max_order.v`,
+    `mattr.v`,
+    `maentropy.v`
+  ), ~ na_if(.x, -1))) %>%
+  # replace NAs with 0s
+  replace_na(list(
+    RuleGPcoordovs = 0,
+    RuleGPdeverbaddr = 0,
+    RuleGPpatinstr = 0,
+    RuleGPdeverbsubj = 0,
+    RuleGPadjective = 0,
+    RuleGPpatbenperson = 0,
+    RuleGPwordorder = 0,
+    RuleDoubleAdpos = 0,
+    RuleDoubleAdpos.max_allowable_distance = 0,
+    RuleDoubleAdpos.max_allowable_distance.v = 0,
+    RuleAmbiguousRegards = 0,
+    RuleReflexivePassWithAnimSubj = 0,
+    RuleTooManyNegations = 0,
+    RuleTooManyNegations.max_negation_frac = 0,
+    RuleTooManyNegations.max_negation_frac.v = 0,
+    RuleTooManyNegations.max_allowable_negations = 0,
+    RuleTooManyNegations.max_allowable_negations.v = 0,
+    RuleTooManyNominalConstructions.max_noun_frac.v = 0,
+    RuleTooManyNominalConstructions.max_allowable_nouns.v = 0,
+    RuleFunctionWordRepetition = 0,
+    RuleCaseRepetition.max_repetition_count.v = 0,
+    RuleCaseRepetition.max_repetition_frac.v = 0,
+    RuleWeakMeaningWords = 0,
+    RuleAbstractNouns = 0,
+    RuleRelativisticExpressions = 0,
+    RuleConfirmationExpressions = 0,
+    RuleRedundantExpressions = 0,
+    RuleTooLongExpressions = 0,
+    RuleAnaphoricReferences = 0,
+    RuleLiteraryStyle = 0,
+    RulePassive = 0,
+    RulePredSubjDistance = 0,
+    RulePredSubjDistance.max_distance = 0,
+    RulePredSubjDistance.max_distance.v = 0,
+    RulePredObjDistance = 0,
+    RulePredObjDistance.max_distance = 0,
+    RulePredObjDistance.max_distance.v = 0,
+    RuleInfVerbDistance = 0,
+    RuleInfVerbDistance.max_distance = 0,
+    RuleInfVerbDistance.max_distance.v = 0,
+    RuleMultiPartVerbs = 0,
+    RuleMultiPartVerbs.max_distance = 0,
+    RuleMultiPartVerbs.max_distance.v = 0,
+    RuleLongSentences.max_length.v = 0,
+    RulePredAtClauseBeginning.max_order.v = 0,
+    RuleVerbalNouns = 0,
+    RuleDoubleComparison = 0,
+    RuleWrongValencyCase = 0,
+    RuleWrongVerbonominalCase = 0,
+    RuleIncompleteConjunction = 0
+  )) %>%
+  # norm data expected to correlate with text length
+  mutate(across(c(
+    RuleGPcoordovs,
+    RuleGPdeverbaddr,
+    RuleGPpatinstr,
+    RuleGPdeverbsubj,
+    RuleGPadjective,
+    RuleGPpatbenperson,
+    RuleGPwordorder,
+    RuleDoubleAdpos,
+    RuleAmbiguousRegards,
+    RuleFunctionWordRepetition,
+    RuleWeakMeaningWords,
+    RuleAbstractNouns,
+    RuleRelativisticExpressions,
+    RuleConfirmationExpressions,
+    RuleRedundantExpressions,
+    RuleTooLongExpressions,
+    RuleAnaphoricReferences,
+    RuleLiteraryStyle,
+    RulePassive,
+    RuleVerbalNouns,
+    RuleDoubleComparison,
+    RuleWrongValencyCase,
+    RuleWrongVerbonominalCase,
+    RuleIncompleteConjunction,
+    num_hapax,
+    RuleReflexivePassWithAnimSubj,
+    RuleTooManyNominalConstructions,
+    RulePredSubjDistance,
+    RuleMultiPartVerbs,
+    RulePredAtClauseBeginning
+  ), ~ .x / word_count)) %>%
+  mutate(across(c(
+    RuleTooFewVerbs,
+    RuleTooManyNegations,
+    RuleCaseRepetition,
+    RuleLongSentences,
+    RulePredObjDistance,
+    RuleInfVerbDistance
+  ), ~ .x / sent_count)) %>%
+  # remove variables identified as "u counts"
+  select(!c(
+    RuleTooFewVerbs,
+    RuleTooManyNegations,
+    RuleTooManyNominalConstructions,
+    RuleCaseRepetition,
+    RuleLongSentences,
+    RulePredAtClauseBeginning
+  )) %>%
+  unite("strata", c(subcorpus, class), sep = "_", remove = FALSE)
+
+# no NAs should be present now
+data_clean[!complete.cases(data_clean), ]
+
+# use tidymodels::step_corr to remove high-correlating variables
+```
+
+# Prepare splits and folds
+
+```{r}
+# CHECK CONSISTENCY WITH analysis.Rmd
+
+.split_prop <- 4 / 5 # proportion of testing data in the dataset
+.no_folds <- 10 # no. of folds in v-fold cross-validation
+
+split <- data_clean %>% initial_split(prop = .split_prop)
+training_set <- training(split)
+evaluation_set <- testing(split)
+
+folds <- vfold_cv(training_set, v = .no_folds, strata = strata)
+
+print(split)
+print(folds)
+
+# structure of the training set
+table(training_set$subcorpus, training_set$class)
+
+# structure of the evaluation set
+table(evaluation_set$subcorpus, evaluation_set$class)
+```
+
+# Classifier helpers
+
+## Models
+
+```{r}
+library(vip)
+```
+
+### Null model
+
+```{r}
+train_null <- function(recipe, folds) {
+  null_workflow <- workflow() %>% add_recipe(recipe)
+
+  null_classification <- null_model() %>%
+    set_engine("parsnip") %>%
+    set_mode("classification")
+
+  null_rs <- fit_resamples(null_workflow %>% add_model(null_classification), folds)
+
+  cat("Null resamples:\n")
+  print(null_rs)
+
+  cat("Null metrics:\n")
+  collect_metrics(null_rs) %>% print()
+
+  return(null_rs)
+}
+```
+
+### Lasso
+
+```{r}
+train_lasso <- function(recipe, training_set, folds) {
+  lasso_tune_spec <- logistic_reg(penalty = tune(), mixture = 1) %>%
+    set_mode("classification") %>%
+    set_engine("glmnet")
+
+  cat("Lasso specification for tuning:\n")
+  print(lasso_tune_spec)
+
+  lambda_grid <- grid_regular(penalty(), levels = 30)
+
+  lasso_tune_wf <- workflow() %>%
+    add_recipe(recipe) %>%
+    add_model(lasso_tune_spec)
+
+  cat("Lasso tune workflow:\n")
+  print(lasso_tune_wf)
+
+  lasso_tune_rs <- tune_grid(
+    lasso_tune_wf,
+    folds,
+    grid = lambda_grid,
+    control = control_resamples(save_pred = TRUE)
+  )
+
+  cat("Lasso tune resamples:\n")
+  print(lasso_tune_rs)
+
+  cat("Lasso tuning metrics:\n")
+  collect_metrics(lasso_tune_rs) %>% print()
+  autoplot(lasso_tune_rs) %>% print()
+
+  lasso_tune_rs %>%
+    show_best(metric = "roc_auc") %>%
+    print()
+  lasso_tune_rs %>%
+    show_best(metric = "accuracy") %>%
+    print()
+
+  best_accuracy <- lasso_tune_rs %>%
+    select_by_one_std_err(metric = "accuracy", -penalty)
+
+  cat("Best accuracy:\n")
+  print(best_accuracy)
+
+  final_lasso <- lasso_tune_wf %>% finalize_workflow(best_accuracy)
+  cat("Final workflow:\n")
+  print(final_lasso)
+
+  fitted_lasso <- fit(final_lasso, training_set)
+
+  cat("Final coefficients:\n")
+  fitted_lasso %>%
+    extract_fit_parsnip() %>%
+    tidy() %>%
+    arrange(estimate) %>%
+    print(n = 100)
+
+  return(fitted_lasso)
+}
+```
+
+### SVM
+
+```{r}
+train_svm <- function(recipe, training_set, folds) {
+  svm_spec <- svm_linear() %>%
+    set_mode("classification") %>%
+    set_engine("kernlab")
+  cat("SVM specification:\n")
+  print(svm_spec)
+
+  svm_wf <- workflow() %>%
+    add_recipe(recipe) %>%
+    add_model(svm_spec)
+  cat("SVM workflow:\n")
+  print(svm_wf)
+
+  svm_rs <- fit_resamples(
+    svm_wf,
+    folds,
+    control = control_resamples(save_pred = TRUE)
+  )
+  cat("SVM resamples:\n")
+  print(svm_rs)
+
+  cat("SVM metrics:\n")
+  collect_metrics(svm_rs) %>% print()
+
+  svm_rs %>%
+    collect_predictions() %>%
+    roc_curve(truth = class, .pred_bad) %>%
+    autoplot() %>%
+    print()
+
+  print("\n")
+
+  svm_rs %>%
+    collect_predictions() %>%
+    group_by(id) %>%
+    roc_curve(truth = class, .pred_bad) %>%
+    autoplot() %>%
+    print()
+
+  print("\n")
+
+  svm_rs %>%
+    conf_mat_resampled(tidy = FALSE) %>%
+    autoplot(type = "heatmap") %>%
+    print()
+
+  print("\n")
+
+  final_svm <- fit(svm_wf, training_set)
+
+  return(final_svm)
+}
+
+# not sure this works
+train_svm_tune <- function(recipe, training_set, folds) {
+  svm_tune_spec <- svm_linear(cost = tune()) %>%
+    set_mode("classification") %>%
+    set_engine("kernlab")
+
+  cat("SVM specification for tuning:\n")
+  print(svm_tune_spec)
+
+  lambda_grid <- grid_regular(cost(), levels = 10)
+  cat("SVM tuning grid:\n")
+  print(lambda_grid)
+
+  svm_tune_wf <- workflow() %>%
+    add_recipe(recipe) %>%
+    add_model(svm_tune_spec)
+
+  cat("SVM tune workflow:\n")
+  print(svm_tune_wf)
+
+  svm_tune_rs <- tune_grid(
+    svm_tune_wf,
+    folds,
+    grid = lambda_grid,
+    control = control_resamples(save_pred = TRUE)
+  )
+
+  cat("SVM tune resamples:\n")
+  print(svm_tune_rs)
+
+  cat("SVM tuning metrics:\n")
+  collect_metrics(svm_tune_rs) %>% print()
+  autoplot(svm_tune_rs) %>% print()
+
+  svm_tune_rs %>%
+    show_best(metric = "roc_auc") %>%
+    print()
+  svm_tune_rs %>%
+    show_best(metric = "accuracy") %>%
+    print()
+
+  best_accuracy <- svm_tune_rs %>%
+    select_by_one_std_err(metric = "accuracy", -cost)
+
+  cat("Best ROC AUC:\n")
+  print(best_accuracy)
+
+  final_svm <- svm_tune_wf %>% finalize_workflow(best_accuracy)
+
+  cat("Final workflow:\n")
+  print(final_svm)
+
+  fitted_svm <- fit(final_svm, training_set)
+
+  return(fitted_svm)
+}
+```
+
+### Random forest
+
+```{r}
+train_random_forest <- function(recipe, training_set, folds) {
+  rf_spec <- rand_forest(trees = 1000) %>%
+    set_mode("classification") %>%
+    set_engine("ranger", importance = "impurity")
+
+  cat("RF specification:\n")
+  print(rf_spec)
+
+  rf_wf <- workflow() %>%
+    add_recipe(recipe) %>%
+    add_model(rf_spec)
+
+  cat("RF workflow:\n")
+  print(rf_wf)
+
+  rf_rs <- fit_resamples(
+    rf_wf,
+    folds,
+    control = control_resamples(save_pred = TRUE)
+  )
+  cat("RF resamples:\n")
+  print(rf_rs)
+
+  cat("RF metrics:\n")
+  collect_metrics(rf_rs) %>% print()
+
+  rf_rs %>%
+    collect_predictions() %>%
+    roc_curve(truth = class, .pred_bad) %>%
+    autoplot() %>%
+    print()
+
+  print("\n")
+
+  rf_rs %>%
+    collect_predictions() %>%
+    group_by(id) %>%
+    roc_curve(truth = class, .pred_bad) %>%
+    autoplot() %>%
+    print()
+
+  print("\n")
+
+  rf_rs %>%
+    conf_mat_resampled(tidy = FALSE) %>%
+    autoplot(type = "heatmap") %>%
+    print()
+
+  print("\n")
+
+  return(rf_rs)
+}
+```
+
+## Recipes
+
+```{r}
+add_corr_remove_step <- function(recipe, training_set) {
+  recipe <- recipe %>% step_corr(all_numeric_predictors(), threshold = .9)
+
+  prep <- recipe %>% prep(training = training_set)
+  no <- prep %>%
+    tidy() %>%
+    filter(type == "corr") %>%
+    pull(number)
+  prep %>%
+    tidy(number = no[[1]]) %>%
+    print(n = 200)
+
+  return(recipe)
+}
+```
+
+### All variables
+
+```{r}
+formula_all <- class ~
+  RuleGPcoordovs +
+  RuleGPdeverbaddr +
+  RuleGPpatinstr +
+  RuleGPdeverbsubj +
+  RuleGPadjective +
+  RuleGPpatbenperson +
+  RuleGPwordorder +
+  RuleDoubleAdpos +
+  RuleDoubleAdpos.max_allowable_distance +
+  RuleDoubleAdpos.max_allowable_distance.v +
+  RuleAmbiguousRegards +
+  RuleReflexivePassWithAnimSubj +
+  # RuleTooFewVerbs +
+  RuleTooFewVerbs.min_verb_frac +
+  # RuleTooManyNegations +
+  RuleTooManyNegations.max_negation_frac +
+  RuleTooManyNegations.max_negation_frac.v +
+  RuleTooManyNegations.max_allowable_negations +
+  RuleTooManyNegations.max_allowable_negations.v +
+  # RuleTooManyNominalConstructions +
+  RuleTooManyNominalConstructions.max_noun_frac +
+  RuleTooManyNominalConstructions.max_noun_frac.v +
+  RuleTooManyNominalConstructions.max_allowable_nouns +
+  RuleTooManyNominalConstructions.max_allowable_nouns +
+  RuleFunctionWordRepetition +
+  # RuleCaseRepetition +
+  RuleCaseRepetition.max_repetition_count +
+  RuleCaseRepetition.max_repetition_count.v +
+  RuleCaseRepetition.max_repetition_frac +
+  RuleCaseRepetition.max_repetition_frac.v +
+  RuleWeakMeaningWords +
+  RuleAbstractNouns +
+  RuleRelativisticExpressions +
+  RuleConfirmationExpressions +
+  RuleRedundantExpressions +
+  RuleTooLongExpressions +
+  RuleAnaphoricReferences +
+  RuleLiteraryStyle +
+  RulePassive +
+  RulePredSubjDistance +
+  RulePredSubjDistance.max_distance +
+  RulePredSubjDistance.max_distance.v +
+  RulePredObjDistance +
+  RulePredObjDistance.max_distance +
+  RulePredObjDistance.max_distance.v +
+  RuleInfVerbDistance +
+  RuleInfVerbDistance.max_distance +
+  RuleInfVerbDistance.max_distance.v +
+  RuleMultiPartVerbs +
+  RuleMultiPartVerbs.max_distance +
+  RuleMultiPartVerbs.max_distance.v +
+  # RuleLongSentences +
+  RuleLongSentences.max_length +
+  RuleLongSentences.max_length.v +
+  # RulePredAtClauseBeginning +
+  RulePredAtClauseBeginning.max_order +
+  RulePredAtClauseBeginning.max_order.v +
+  RuleVerbalNouns +
+  RuleDoubleComparison +
+  RuleWrongValencyCase +
+  RuleWrongVerbonominalCase +
+  RuleIncompleteConjunction +
+  sent_count +
+  word_count +
+  syllab_count +
+  char_count +
+  cli +
+  ari +
+  num_hapax +
+  entropy +
+  ttr +
+  mattr +
+  mattr.v +
+  maentropy +
+  maentropy.v +
+  mamr +
+  verb_dist +
+  activity +
+  hpoint +
+  atl +
+  fre +
+  fkgl +
+  gf +
+  smog
+
+recipe_all_base <- recipe(
+  formula_all,
+  data = training_set
+)
+
+# without the removal of correlating variables
+recipe_all_nocorr <- recipe_all_base %>%
+  step_normalize(all_numeric_predictors())
+recipe_all_nocorr
+
+# with the removal of correlating variables
+recipe_all <- recipe_all_nocorr %>%
+  add_corr_remove_step(training_set = training_set)
+recipe_all
+```
+
+### Counts
+
+```{r}
+formula_counts <- class ~
+  RuleGPcoordovs +
+  RuleGPdeverbaddr +
+  RuleGPpatinstr +
+  RuleGPdeverbsubj +
+  RuleGPadjective +
+  RuleGPpatbenperson +
+  RuleGPwordorder +
+  RuleDoubleAdpos +
+  RuleAmbiguousRegards +
+  RuleReflexivePassWithAnimSubj +
+  RuleFunctionWordRepetition +
+  RuleWeakMeaningWords +
+  RuleAbstractNouns +
+  RuleRelativisticExpressions +
+  RuleConfirmationExpressions +
+  RuleRedundantExpressions +
+  RuleTooLongExpressions +
+  RuleAnaphoricReferences +
+  RuleLiteraryStyle +
+  RulePassive +
+  RulePredSubjDistance +
+  RulePredObjDistance +
+  RuleInfVerbDistance +
+  RuleMultiPartVerbs +
+  RuleVerbalNouns +
+  RuleDoubleComparison +
+  RuleWrongValencyCase +
+  RuleWrongVerbonominalCase +
+  RuleIncompleteConjunction +
+  sent_count +
+  word_count +
+  syllab_count +
+  char_count +
+  num_hapax
+
+recipe_counts_base <- recipe(formula_counts, data = training_set)
+
+recipe_counts_nocorr <- recipe_counts_base %>%
+  step_normalize()
+recipe_counts_nocorr
+
+recipe_counts <- recipe_counts_nocorr %>%
+  add_corr_remove_step(training_set = training_set)
+recipe_counts
+```
+
+### Indicators, averages, and coefficients
+
+```{r}
+formula_iac <- class ~
+  RuleDoubleAdpos.max_allowable_distance +
+  RuleDoubleAdpos.max_allowable_distance.v +
+  RuleTooFewVerbs.min_verb_frac +
+  RuleTooManyNegations.max_negation_frac +
+  RuleTooManyNegations.max_negation_frac.v +
+  RuleTooManyNegations.max_allowable_negations +
+  RuleTooManyNegations.max_allowable_negations.v +
+  RuleTooManyNominalConstructions.max_noun_frac +
+  RuleTooManyNominalConstructions.max_noun_frac.v +
+  RuleTooManyNominalConstructions.max_allowable_nouns +
+  RuleTooManyNominalConstructions.max_allowable_nouns.v +
+  RuleCaseRepetition.max_repetition_count +
+  RuleCaseRepetition.max_repetition_count.v +
+  RuleCaseRepetition.max_repetition_frac +
+  RuleCaseRepetition.max_repetition_frac.v +
+  RulePredSubjDistance.max_distance +
+  RulePredSubjDistance.max_distance.v +
+  RulePredObjDistance.max_distance +
+  RulePredObjDistance.max_distance.v +
+  RuleInfVerbDistance.max_distance +
+  RuleInfVerbDistance.max_distance.v +
+  RuleMultiPartVerbs.max_distance +
+  RuleMultiPartVerbs.max_distance.v +
+  RuleLongSentences.max_length +
+  RuleLongSentences.max_length.v +
+  RulePredAtClauseBeginning.max_order +
+  RulePredAtClauseBeginning.max_order.v +
+  cli +
+  ari +
+  entropy +
+  ttr +
+  mattr +
+  mattr.v +
+  maentropy +
+  maentropy.v +
+  mamr +
+  verb_dist +
+  activity +
+  hpoint +
+  atl +
+  fre +
+  fkgl +
+  gf +
+  smog
+
+recipe_iac_base <- recipe(formula_iac, data = training_set)
+
+recipe_iac_nocorr <- recipe_iac_base %>%
+  step_normalize()
+recipe_iac_nocorr
+
+recipe_iac <- recipe_iac_nocorr %>%
+  add_corr_remove_step(training_set = training_set)
+recipe_iac
+```
+
+# Null model
+
+## All variables
+
+### Remove correlating
+
+```{r}
+train_null(recipe_all, folds)
+```
+
+### Keep correlating
+
+```{r}
+train_null(recipe_all_nocorr, folds)
+```
+
+# Regular logistic regression
+
+```{r}
+training_set_modif <- training_set %>%
+  mutate(across(class, ~ .x == "good")) %>%
+  mutate(across(RuleAbstractNouns:word_count, ~ scale(.x)))
+```
+
+## All variables
+
+```{r}
+glm(
+  formula_all,
+  data = training_set_modif,
+  family = binomial(link = "logit")
+) %>% summary()
+```
+
+## Indicators, averages, and coefficients
+
+```{r}
+glm(
+  formula_iac,
+  data = training_set_modif,
+  family = binomial(link = "logit")
+) %>% summary()
+```
+
+## Counts
+
+```{r}
+glm(
+  formula_counts,
+  data = training_set_modif,
+  family = binomial(link = "logit")
+) %>% summary()
+```
+
+# Lasso
+
+## All variables
+
+### Remove correlating
+
+```{r}
+train_lasso(recipe_all, training_set, folds)
+```
+
+### Keep correlating
+
+```{r}
+train_lasso(recipe_all_nocorr, training_set, folds)
+```
+
+## Indicators, averages, and coefficients
+
+### Remove correlating
+
+```{r}
+train_lasso(recipe_iac, training_set, folds)
+```
+
+### Keep correlating
+
+```{r}
+train_lasso(recipe_iac_nocorr, training_set, folds)
+```
+
+## Counts
+
+### Remove correlating
+
+```{r}
+train_lasso(recipe_counts, training_set, folds)
+```
+
+### Keep correlating
+
+```{r}
+train_lasso(recipe_counts_nocorr, training_set, folds)
+```
+
+
+
+# SVM
+
+## All variables
+
+### Remove correlating
+
+```{r}
+train_svm(recipe_all, training_set, folds)
+```
+
+### Keep correlating
+
+```{r}
+train_svm(recipe_all_nocorr, training_set, folds)
+```
+
+# Random forest
+
+## All variables
+
+### Remove correlating
+
+```{r}
+train_random_forest(recipe_all, training_set, folds)
+```
+
+### Keep correlating
+
+```{r}
+train_random_forest(recipe_all_nocorr, training_set, folds)
+```
