@@ -6,6 +6,7 @@ output: pdf_document
 ```{r}
 set.seed(42)
 
+library(caret)
 library(tidyverse)
 library(tidymodels)
 ```
@@ -154,7 +155,8 @@ data_clean <- data %>%
     RuleLongSentences,
     RulePredAtClauseBeginning
   )) %>%
-  unite("strata", c(subcorpus, class), sep = "_", remove = FALSE)
+  unite("strata", c(subcorpus, class), sep = "_", remove = FALSE) %>%
+  mutate(across(c(class), ~ as.factor(.x)))
 
 # no NAs should be present now
 data_clean[!complete.cases(data_clean), ]
@@ -192,6 +194,10 @@ table(evaluation_set$subcorpus, evaluation_set$class)
 
 ```{r}
 library(vip)
+
+# decision tree libraries
+library(rpart)
+library(rpart.plot)
 ```
 
 ### Null model
@@ -213,6 +219,16 @@ train_null <- function(recipe, folds) {
   collect_metrics(null_rs) %>% print()
 
   return(null_rs)
+}
+```
+
+### Decision tree
+
+```{r}
+train_decision_tree <- function(formula, training_set) {
+  model <- rpart(formula, training_set)
+  model %>% rpart.plot(type = 2, extra = 2)
+  return(model)
 }
 ```
 
@@ -276,7 +292,13 @@ train_lasso <- function(recipe, training_set, folds) {
     arrange(estimate) %>%
     print(n = 100)
 
-  return(fitted_lasso)
+  cat("Variable importance:\n")
+  fitted_lasso %>%
+    extract_fit_parsnip() %>%
+    vi() %>%
+    print(n = 100)
+
+  return(final_lasso)
 }
 ```
 
@@ -287,8 +309,6 @@ train_svm <- function(recipe, training_set, folds) {
   svm_spec <- svm_linear() %>%
     set_mode("classification") %>%
     set_engine("kernlab")
-  # cat("SVM specification:\n")
-  # print(svm_spec)
 
   svm_wf <- workflow() %>%
     add_recipe(recipe) %>%
@@ -331,7 +351,58 @@ train_svm <- function(recipe, training_set, folds) {
 
   print("\n")
 
-  final_svm <- fit(svm_wf, training_set)
+  final_svm <- svm_wf
+
+  return(final_svm)
+}
+
+train_svm_rbf <- function(recipe, training_set, folds) {
+  svm_spec <- svm_rbf() %>%
+    set_mode("classification") %>%
+    set_engine("kernlab")
+
+  svm_wf <- workflow() %>%
+    add_recipe(recipe) %>%
+    add_model(svm_spec)
+  cat("SVM workflow:\n")
+  print(svm_wf)
+
+  svm_rs <- fit_resamples(
+    svm_wf,
+    folds,
+    control = control_resamples(save_pred = TRUE)
+  )
+  # cat("SVM resamples:\n")
+  # print(svm_rs)
+
+  cat("SVM metrics:\n")
+  collect_metrics(svm_rs) %>% print()
+
+  svm_rs %>%
+    collect_predictions() %>%
+    roc_curve(truth = class, .pred_bad) %>%
+    autoplot() %>%
+    print()
+
+  print("\n")
+
+  svm_rs %>%
+    collect_predictions() %>%
+    group_by(id) %>%
+    roc_curve(truth = class, .pred_bad) %>%
+    autoplot() %>%
+    print()
+
+  print("\n")
+
+  svm_rs %>%
+    conf_mat_resampled(tidy = FALSE) %>%
+    autoplot(type = "heatmap") %>%
+    print()
+
+  print("\n")
+
+  final_svm <- svm_wf
 
   return(final_svm)
 }
@@ -448,7 +519,15 @@ train_random_forest <- function(recipe, training_set, folds) {
 
   print("\n")
 
-  return(rf_rs)
+  final_rf <- rf_wf
+
+  fitted_rf <- final_rf %>% fit(training_set)
+  fitted_rf %>%
+    extract_fit_parsnip() %>%
+    vi() %>%
+    print(n = 100)
+
+  return(final_rf)
 }
 ```
 
@@ -474,6 +553,10 @@ add_corr_remove_step <- function(recipe, training_set) {
 ### All variables
 
 ```{r}
+# features excluded, because:
+# - they're ucounts
+# - they were selected to be excluded (unreliability or irrelevance)
+
 formula_all <- class ~
   RuleGPcoordovs +
   RuleGPdeverbaddr +
@@ -485,7 +568,7 @@ formula_all <- class ~
   RuleDoubleAdpos +
   RuleDoubleAdpos.max_allowable_distance +
   RuleDoubleAdpos.max_allowable_distance.v +
-  RuleAmbiguousRegards +
+  # RuleAmbiguousRegards +
   RuleReflexivePassWithAnimSubj +
   # RuleTooFewVerbs +
   RuleTooFewVerbs.min_verb_frac +
@@ -499,7 +582,7 @@ formula_all <- class ~
   RuleTooManyNominalConstructions.max_noun_frac.v +
   RuleTooManyNominalConstructions.max_allowable_nouns +
   RuleTooManyNominalConstructions.max_allowable_nouns +
-  RuleFunctionWordRepetition +
+  # RuleFunctionWordRepetition +
   # RuleCaseRepetition +
   RuleCaseRepetition.max_repetition_count +
   RuleCaseRepetition.max_repetition_count.v +
@@ -533,10 +616,10 @@ formula_all <- class ~
   RulePredAtClauseBeginning.max_order +
   RulePredAtClauseBeginning.max_order.v +
   RuleVerbalNouns +
-  RuleDoubleComparison +
-  RuleWrongValencyCase +
-  RuleWrongVerbonominalCase +
-  RuleIncompleteConjunction +
+  # RuleDoubleComparison +
+  # RuleWrongValencyCase +
+  # RuleWrongVerbonominalCase +
+  # RuleIncompleteConjunction +
   sent_count +
   word_count +
   syllab_count +
@@ -576,9 +659,116 @@ recipe_all <- recipe_all_nocorr %>%
 recipe_all
 ```
 
+### No text length
+
+```{r}
+# features excluded, because:
+# - they're ucounts
+# - they were selected to be excluded (unreliability or irrelevance)
+
+formula_notl <- class ~
+  RuleGPcoordovs +
+  RuleGPdeverbaddr +
+  RuleGPpatinstr +
+  RuleGPdeverbsubj +
+  RuleGPadjective +
+  RuleGPpatbenperson +
+  RuleGPwordorder +
+  RuleDoubleAdpos +
+  RuleDoubleAdpos.max_allowable_distance +
+  RuleDoubleAdpos.max_allowable_distance.v +
+  # RuleAmbiguousRegards +
+  RuleReflexivePassWithAnimSubj +
+  # RuleTooFewVerbs +
+  RuleTooFewVerbs.min_verb_frac +
+  # RuleTooManyNegations +
+  RuleTooManyNegations.max_negation_frac +
+  RuleTooManyNegations.max_negation_frac.v +
+  RuleTooManyNegations.max_allowable_negations +
+  RuleTooManyNegations.max_allowable_negations.v +
+  # RuleTooManyNominalConstructions +
+  RuleTooManyNominalConstructions.max_noun_frac +
+  RuleTooManyNominalConstructions.max_noun_frac.v +
+  RuleTooManyNominalConstructions.max_allowable_nouns +
+  RuleTooManyNominalConstructions.max_allowable_nouns +
+  # RuleFunctionWordRepetition +
+  # RuleCaseRepetition +
+  RuleCaseRepetition.max_repetition_count +
+  RuleCaseRepetition.max_repetition_count.v +
+  RuleCaseRepetition.max_repetition_frac +
+  RuleCaseRepetition.max_repetition_frac.v +
+  RuleWeakMeaningWords +
+  RuleAbstractNouns +
+  RuleRelativisticExpressions +
+  RuleConfirmationExpressions +
+  RuleRedundantExpressions +
+  RuleTooLongExpressions +
+  RuleAnaphoricReferences +
+  RuleLiteraryStyle +
+  RulePassive +
+  RulePredSubjDistance +
+  RulePredSubjDistance.max_distance +
+  RulePredSubjDistance.max_distance.v +
+  RulePredObjDistance +
+  RulePredObjDistance.max_distance +
+  RulePredObjDistance.max_distance.v +
+  RuleInfVerbDistance +
+  RuleInfVerbDistance.max_distance +
+  RuleInfVerbDistance.max_distance.v +
+  RuleMultiPartVerbs +
+  RuleMultiPartVerbs.max_distance +
+  RuleMultiPartVerbs.max_distance.v +
+  # RuleLongSentences +
+  RuleLongSentences.max_length +
+  RuleLongSentences.max_length.v +
+  # RulePredAtClauseBeginning +
+  RulePredAtClauseBeginning.max_order +
+  RulePredAtClauseBeginning.max_order.v +
+  RuleVerbalNouns +
+  # RuleDoubleComparison +
+  # RuleWrongValencyCase +
+  # RuleWrongVerbonominalCase +
+  # RuleIncompleteConjunction +
+  # sent_count +
+  # word_count +
+  # syllab_count +
+  # char_count +
+  cli +
+  ari +
+  num_hapax +
+  entropy +
+  ttr +
+  mattr +
+  mattr.v +
+  maentropy +
+  maentropy.v +
+  mamr +
+  verb_dist +
+  activity +
+  hpoint +
+  atl +
+  fre +
+  fkgl +
+  gf +
+  smog
+
+recipe_notl_base <- recipe(
+  formula_all,
+  data = training_set
+)
+
+# without the removal of correlating variables
+recipe_notl_nocorr <- recipe_notl_base %>%
+  step_normalize(all_numeric_predictors())
+recipe_notl_nocorr
+```
+
 ### Counts
 
 ```{r}
+# features excluded, because:
+# - they were selected to be excluded
+
 formula_counts <- class ~
   RuleGPcoordovs +
   RuleGPdeverbaddr +
@@ -588,9 +778,9 @@ formula_counts <- class ~
   RuleGPpatbenperson +
   RuleGPwordorder +
   RuleDoubleAdpos +
-  RuleAmbiguousRegards +
+  # RuleAmbiguousRegards +
   RuleReflexivePassWithAnimSubj +
-  RuleFunctionWordRepetition +
+  # RuleFunctionWordRepetition +
   RuleWeakMeaningWords +
   RuleAbstractNouns +
   RuleRelativisticExpressions +
@@ -605,10 +795,10 @@ formula_counts <- class ~
   RuleInfVerbDistance +
   RuleMultiPartVerbs +
   RuleVerbalNouns +
-  RuleDoubleComparison +
-  RuleWrongValencyCase +
-  RuleWrongVerbonominalCase +
-  RuleIncompleteConjunction +
+  # RuleDoubleComparison +
+  # RuleWrongValencyCase +
+  # RuleWrongVerbonominalCase +
+  # RuleIncompleteConjunction +
   sent_count +
   word_count +
   syllab_count +
@@ -686,6 +876,90 @@ recipe_iac <- recipe_iac_nocorr %>%
 recipe_iac
 ```
 
+## Evaluation
+
+### Decision tree
+
+```{r}
+evaluate_decision_tree <- function(model, evaluation_set) {
+  test_predictions <- predict(model, evaluation_set, type = "class")
+  # cm <- table(evaluation_set$conti_de, test_predictions)
+
+  cm <- confusionMatrix(
+    data = test_predictions,
+    reference = evaluation_set$class,
+    positive = "good"
+  )
+  print(cm)
+}
+```
+
+### Tidymodels
+
+```{r}
+evaluate_tidymodel <- function(final_wf, split) {
+  final_fitted <- last_fit(final_wf, split)
+
+  metrics <- collect_metrics(final_fitted)
+  print(metrics)
+
+  predictions <- collect_predictions(final_fitted)
+  predictions %>%
+    conf_mat(truth = class, estimate = .pred_class) %>%
+    autoplot(type = "heatmap") %>%
+    print()
+  predictions %>%
+    roc_curve(truth = class, .pred_bad) %>%
+    autoplot() %>%
+    print()
+
+  var_imp <- final_fitted$.workflow[[1]] %>%
+    extract_fit_parsnip() %>%
+    vi()
+  var_imp %>%
+    print(n = 100)
+
+  return(final_fitted)
+}
+
+lasso_get_coefficients <- function(final_lasso_wf) {
+  return(
+    final_lasso_wf %>%
+      extract_fit_parsnip() %>%
+      tidy() %>%
+      arrange(estimate)
+  )
+}
+
+get_mismatch_details <- function(lfit, data_orig) {
+  joined <- data_orig %>%
+    select(KUK_ID, FileName, Readability, ClarityPursuit, subcorpus) %>%
+    rowid_to_column(".row") %>%
+    right_join(lfit$.predictions[[1]] %>% select(!.config), by = ".row")
+
+  print(
+    joined %>% ggplot(aes(x = .pred_good, y = class, color = subcorpus)) +
+      geom_jitter(height = 0.2, width = 0)
+  )
+
+  cat("Confusion matrices by subcorpora:\n")
+  joined %>%
+    select(.pred_class, class, subcorpus) %>%
+    table() %>%
+    print()
+
+  cat("\n")
+  cat("Greatest deviations:\n")
+  joined %>%
+    filter(.pred_class != class) %>%
+    mutate(deviation = .pred_good - 0.5) %>%
+    mutate(abs_deviation = abs(deviation)) %>%
+    arrange(-abs_deviation) %>%
+    select(abs_deviation, .pred_class, class, subcorpus, FileName) %>%
+    print(n = round(nrow(joined) / 5))
+}
+```
+
 # Null model
 
 ## All variables
@@ -740,6 +1014,38 @@ glm(
 ) %>% summary()
 ```
 
+
+# Decision tree
+
+```{r}
+library(rpart) # decision trees for classification and regression
+library(rpart.plot) # visualization of decision trees created with rpart
+```
+
+## All variables
+
+```{r}
+model_dt_all <- train_decision_tree(formula_all, training_set)
+```
+
+## No TL
+
+```{r}
+model_dt_notl <- train_decision_tree(formula_notl, training_set)
+```
+
+## IAC
+
+```{r}
+model_dt_iac <- train_decision_tree(formula_iac, training_set)
+```
+
+## Counts
+
+```{r}
+model_dt_counts <- train_decision_tree(formula_counts, training_set)
+```
+
 # Lasso
 
 ## All variables
@@ -747,13 +1053,19 @@ glm(
 ### Remove correlating
 
 ```{r}
-train_lasso(recipe_all, training_set, folds)
+# train_lasso(recipe_all, training_set, folds)
 ```
 
 ### Keep correlating
 
 ```{r}
-train_lasso(recipe_all_nocorr, training_set, folds)
+model_lasso_all <- train_lasso(recipe_all_nocorr, training_set, folds)
+```
+
+## No TL
+
+```{r}
+model_lasso_notl <- train_lasso(recipe_notl_nocorr, training_set, folds)
 ```
 
 ## Indicators, averages, and coefficients
@@ -761,13 +1073,13 @@ train_lasso(recipe_all_nocorr, training_set, folds)
 ### Remove correlating
 
 ```{r}
-train_lasso(recipe_iac, training_set, folds)
+# train_lasso(recipe_iac, training_set, folds)
 ```
 
 ### Keep correlating
 
 ```{r}
-train_lasso(recipe_iac_nocorr, training_set, folds)
+model_lasso_iac <- train_lasso(recipe_iac_nocorr, training_set, folds)
 ```
 
 ## Counts
@@ -775,16 +1087,14 @@ train_lasso(recipe_iac_nocorr, training_set, folds)
 ### Remove correlating
 
 ```{r}
-train_lasso(recipe_counts, training_set, folds)
+# train_lasso(recipe_counts, training_set, folds)
 ```
 
 ### Keep correlating
 
 ```{r}
-train_lasso(recipe_counts_nocorr, training_set, folds)
+model_lasso_counts <- train_lasso(recipe_counts_nocorr, training_set, folds)
 ```
-
-
 
 # SVM
 
@@ -793,13 +1103,14 @@ train_lasso(recipe_counts_nocorr, training_set, folds)
 ### Remove correlating
 
 ```{r}
-train_svm(recipe_all, training_set, folds)
+# train_svm(recipe_all, training_set, folds)
 ```
 
 ### Keep correlating
 
 ```{r}
-train_svm(recipe_all_nocorr, training_set, folds)
+model_svm_all <- train_svm(recipe_all_nocorr, training_set, folds)
+model_svm_rbf_all <- train_svm_rbf(recipe_all_nocorr, training_set, folds)
 ```
 
 # Random forest
@@ -809,11 +1120,132 @@ train_svm(recipe_all_nocorr, training_set, folds)
 ### Remove correlating
 
 ```{r}
-train_random_forest(recipe_all, training_set, folds)
+# train_random_forest(recipe_all, training_set, folds)
 ```
 
 ### Keep correlating
 
 ```{r}
-train_random_forest(recipe_all_nocorr, training_set, folds)
+model_rf_all <- train_random_forest(recipe_all_nocorr, training_set, folds)
+```
+
+## No TL
+
+```{r}
+model_rf_notl <- train_random_forest(recipe_notl_nocorr, training_set, folds)
+```
+
+## IAC
+
+```{r}
+model_rf_iac <- train_random_forest(recipe_iac_nocorr, training_set, folds)
+```
+
+## Counts
+
+```{r}
+model_rf_counts <- train_random_forest(recipe_counts_nocorr, training_set, folds)
+```
+
+
+# Evaluations
+
+## Decision tree
+
+### All variables
+
+```{r}
+evaluate_decision_tree(model_dt_all, evaluation_set)
+```
+
+### No TL
+
+```{r}
+evaluate_decision_tree(model_dt_notl, evaluation_set)
+```
+
+### IAC
+
+```{r}
+evaluate_decision_tree(model_dt_iac, evaluation_set)
+```
+
+### Counts
+
+```{r}
+evaluate_decision_tree(model_dt_counts, evaluation_set)
+```
+
+
+
+## Lasso
+
+### All
+
+```{r}
+lfit_lasso_all <- model_lasso_all %>% evaluate_tidymodel(split)
+lfit_lasso_all %>% get_mismatch_details(data)
+lfit_lasso_all %>%
+  lasso_get_coefficients() %>%
+  print(n = 100)
+```
+
+### No TL
+
+```{r}
+lfit_lasso_notl <- model_lasso_notl %>% evaluate_tidymodel(split)
+lfit_lasso_notl %>% get_mismatch_details(data)
+lfit_lasso_notl %>%
+  lasso_get_coefficients() %>%
+  print(n = 100)
+```
+
+### IAC
+
+```{r}
+lfit_lasso_iac <- model_lasso_iac %>% evaluate_tidymodel(split)
+lfit_lasso_iac %>% get_mismatch_details(data)
+lfit_lasso_iac %>%
+  lasso_get_coefficients() %>%
+  print(n = 100)
+```
+
+### Counts
+
+```{r}
+lfit_lasso_counts <- model_lasso_counts %>% evaluate_tidymodel(split)
+lfit_lasso_counts %>% get_mismatch_details(data)
+lfit_lasso_counts %>%
+  lasso_get_coefficients() %>%
+  print(n = 100)
+```
+
+## Random forest
+
+### All
+
+```{r}
+lfit_rf_all <- model_rf_all %>% evaluate_tidymodel(split)
+lfit_rf_all %>% get_mismatch_details(data)
+```
+
+### No TL
+
+```{r}
+lfit_rf_notl <- model_rf_notl %>% evaluate_tidymodel(split)
+lfit_rf_notl %>% get_mismatch_details(data)
+```
+
+### IAC
+
+```{r}
+lfit_rf_iac <- model_rf_iac %>% evaluate_tidymodel(split)
+lfit_rf_iac %>% get_mismatch_details(data)
+```
+
+### Counts
+
+```{r}
+lfit_rf_counts <- model_rf_counts %>% evaluate_tidymodel(split)
+lfit_rf_counts %>% get_mismatch_details(data)
 ```
