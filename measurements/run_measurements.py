@@ -137,6 +137,7 @@ if __name__ == "__main__":
         df_selected_documents.rename(columns={"target_fpath": "fpath"})
         .set_index("fpath")
         .join(df.set_index("fpath"))
+        .drop_duplicates()  # some rows get duplicated during the join for some reason
         .reset_index()
     )
 
