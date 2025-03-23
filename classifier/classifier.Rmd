@@ -224,8 +224,8 @@ train_lasso <- function(recipe, training_set, folds) {
     set_mode("classification") %>%
     set_engine("glmnet")
 
-  cat("Lasso specification for tuning:\n")
-  print(lasso_tune_spec)
+  # cat("Lasso specification for tuning:\n")
+  # print(lasso_tune_spec)
 
   lambda_grid <- grid_regular(penalty(), levels = 30)
 
@@ -243,11 +243,11 @@ train_lasso <- function(recipe, training_set, folds) {
     control = control_resamples(save_pred = TRUE)
   )
 
-  cat("Lasso tune resamples:\n")
-  print(lasso_tune_rs)
+  # cat("Lasso tune resamples:\n")
+  # print(lasso_tune_rs)
 
   cat("Lasso tuning metrics:\n")
-  collect_metrics(lasso_tune_rs) %>% print()
+  # collect_metrics(lasso_tune_rs) %>% print()
   autoplot(lasso_tune_rs) %>% print()
 
   lasso_tune_rs %>%
@@ -287,8 +287,8 @@ train_svm <- function(recipe, training_set, folds) {
   svm_spec <- svm_linear() %>%
     set_mode("classification") %>%
     set_engine("kernlab")
-  cat("SVM specification:\n")
-  print(svm_spec)
+  # cat("SVM specification:\n")
+  # print(svm_spec)
 
   svm_wf <- workflow() %>%
     add_recipe(recipe) %>%
@@ -301,8 +301,8 @@ train_svm <- function(recipe, training_set, folds) {
     folds,
     control = control_resamples(save_pred = TRUE)
   )
-  cat("SVM resamples:\n")
-  print(svm_rs)
+  # cat("SVM resamples:\n")
+  # print(svm_rs)
 
   cat("SVM metrics:\n")
   collect_metrics(svm_rs) %>% print()
@@ -402,8 +402,8 @@ train_random_forest <- function(recipe, training_set, folds) {
     set_mode("classification") %>%
     set_engine("ranger", importance = "impurity")
 
-  cat("RF specification:\n")
-  print(rf_spec)
+  # cat("RF specification:\n")
+  # print(rf_spec)
 
   rf_wf <- workflow() %>%
     add_recipe(recipe) %>%
@@ -417,11 +417,12 @@ train_random_forest <- function(recipe, training_set, folds) {
     folds,
     control = control_resamples(save_pred = TRUE)
   )
-  cat("RF resamples:\n")
-  print(rf_rs)
+  # cat("RF resamples:\n")
+  # print(rf_rs)
 
   cat("RF metrics:\n")
   collect_metrics(rf_rs) %>% print()
+
 
   rf_rs %>%
     collect_predictions() %>%
