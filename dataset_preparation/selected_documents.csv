@@ -1,6 +1,4 @@
 KUK_ID,class,FileName,FolderPath,subcorpus,DocumentTitle,Readability,ClarityPursuit,SyllogismBased,SourceDB
-671918e2c6537d54ff0626de,bad,Duchody,data/KUKY/TXT,KUKY,NA,low,NA,false,SourceDB
-671918e2c6537d54ff0626df,bad,Odpadni-vody,data/KUKY/TXT,KUKY,NA,low,NA,false,SourceDB
 673b7a37c6537d54ff062b8c,bad,002_Komunalni-odpad,data/KUKY/TXT,KUKY,NA,low,NA,false,SourceDB
 673b7a37c6537d54ff062b8f,good,006_Chci ZMĚNIT DŮCHOD - V. 21,data/KUKY/TXT,KUKY,NA,high,NA,false,SourceDB
 673b7a37c6537d54ff062b8e,bad,004_Nevyplaceni-mzdy,data/KUKY/TXT,KUKY,NA,low,NA,false,SourceDB
@@ -265,6 +263,7 @@ CzCDC_SupC010946,bad,rozhodnuti-4_Tdo_128_2014,https://lindat.mff.cuni.cz/reposi
 CzCDC_SupA018688,bad,0040_4As__0800050A_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,4 As 40/2008-50,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupA018761,bad,0017_4As__1300001_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,4 As 31/2010-73,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupA020303,bad,0156_4Ads_1400029_20140918075555_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,4 Ads 156/2014-29,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
+CzCDC_SupC013599,bad,rozhodnuti-33_Cdo_2924_2016,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,33 Cdo 2924/2016,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupC014518,bad,rozhodnuti-33_Cdo_1232_2010,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,33 Cdo 1232/2010,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupC015261,bad,rozhodnuti-32_Cdo_626_2010,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,32 Cdo 626/2010,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupC016118,bad,rozhodnuti-32_Cdo_3525_2016,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,32 Cdo 3525/2016,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
@@ -354,6 +353,7 @@ CzCDC_SupC060881,bad,rozhodnuti-7_Tdo_1531_2015,https://lindat.mff.cuni.cz/repos
 CzCDC_SupC061580,bad,rozhodnuti-7_Tdo_1127_2006,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,7 Tdo 1127/2006,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupA036639,bad,0096_7As__100_20110209090145_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,7 As 96/2010-76,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupC062545,bad,rozhodnuti-6_Tdo_65_2018,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,6 Tdo 65/2018,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
+CzCDC_SupA038806,bad,0031_6Azs_0500052A_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,6 Azs 31/2005-52,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupA039304,bad,0110_6Azs_0400075A_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,6 Azs 110/2004-75,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupC063981,bad,rozhodnuti-5_Tdo_431_2002,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,5 Tdo 431/2002,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupC064163,bad,rozhodnuti-5_Tdo_250_2006,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,5 Tdo 250/2006,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
@@ -363,6 +363,7 @@ CzCDC_SupC067344,bad,rozhodnuti-4_Nd_157_2009,https://lindat.mff.cuni.cz/reposit
 CzCDC_SupA044085,bad,0170_4Azs_0500041A_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,4 Azs 170/2005-41,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupA044816,bad,0095_4Afs_1600036_20160719134811_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,4 Afs 95/2016-36,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupA045025,bad,0074_4Ads_0600040A_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,4 Ads 74/2006-40,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
+CzCDC_SupC067762,bad,rozhodnuti-33_Odo_826_2003,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,33 Odo 826/2003,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupC069347,bad,rozhodnuti-33_Cdo_761_2014,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,33 Cdo 761/2014,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupC071773,bad,rozhodnuti-32_Odo_174_2006,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,32 Odo 174/2006,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupC072716,bad,rozhodnuti-32_Cdo_4890_2007,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,32 Cdo 4890/2007,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
@@ -375,6 +376,7 @@ CzCDC_SupC078019,bad,rozhodnuti-3_Tvo_3_2001,https://lindat.mff.cuni.cz/reposito
 CzCDC_SupA046678,bad,0098_3As__120_20130321122505_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,3 As 98/2012-24,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupA046890,bad,0040_3As__1600049_20170124092939_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,3 As 40/2016-49,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupA047403,bad,0001_3Ans_0700141A_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,3 Ans 1/2007-141,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
+CzCDC_SupA048186,bad,0144_3Ads_0700055A_prevedeno,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupAdmCo.zip,CzCDC,3 Ads 144/2007-55,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupC080987,bad,rozhodnuti-29_Odo_444_2001,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,29 Odo 444/2001,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupC081000,bad,rozhodnuti-29_Odo_435_2001,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,29 Odo 435/2001,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
 CzCDC_SupC082181,bad,rozhodnuti-29_Od_44_2006,https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11372/LRT-3052/SupCoCo.zip,CzCDC,29 Od 44/2006,NA,FALSE,NA,http://hdl.handle.net/11372/LRT-3052
@@ -569,7 +571,6 @@ Fart_orig_07138,good,orig_Ekologický spolek jako žalobce – kdy se bránit u 
 Fart_orig_07158,good,orig_Veřejné prostranství,data/FrBo/articles/TXT,FrBo,Veřejné prostranství: co to je a jak ho využít?,high,FALSE,NA,FrBo_articles
 Fart_orig_07205,bad,orig_Jak se zapojit do zasedání zastupitelstva,data/FrBo/articles/TXT,FrBo,Jak se zapojit na zasedání zastupitelstva,medium,FALSE,NA,FrBo_articles
 Fart_orig_4CAd1,bad,orig_Neinformování o zahájení řízení podle § 70 ZOPK,data/FrBo/articles/TXT,FrBo,Neinformování o zahájeném správním řízení podle § 70 zákona o ochraně přírody a krajiny,medium,FALSE,NA,FrBo_articles
-Fart_orig_5938a,bad,"orig_Mohou spolky ve správních žalobách používat věcné argumenty_final, odkaz na soudní ochrana spolků",data/FrBo/articles/TXT,FrBo,Mohou spolky ve správních žalobách používat věcné argumenty?,NA,FALSE,NA,FrBo_articles
 Fart_orig_5938b,bad,orig_Mohou spolky ve správních žalobách používat věcné argumenty_final,data/FrBo/articles/TXT,FrBo,Mohou spolky ve správních žalobách používat věcné argumenty?,medium,FALSE,NA,FrBo_articles
 Fart_orig_8KpaB,good,orig_Jak se zapojit do procesu přijímání plánů povodí,data/FrBo/articles/TXT,FrBo,Jak se zapojit do procesu přijímání plánů povodí?,high,FALSE,NA,FrBo_articles
 Fart_orig_9hMND,bad,orig_financovani_politickych_stran,data/FrBo/articles/TXT,FrBo,Financování politických stran,medium,FALSE,NA,FrBo_articles
@@ -706,7 +707,6 @@ Fart_red_07106,good,red_Politické nástroje občana_final,data/FrBo/articles/TX
 Fart_red_07138,good,red_Ekologický spolek jako žalobce – kdy se bránit u soudu_final,data/FrBo/articles/TXT,FrBo,Ekologický spolek jako žalobce – kdy se bránit u soudu?,high,TRUE,NA,FrBo_articles
 Fart_red_07158,good,red_Veřejné prostranství,data/FrBo/articles/TXT,FrBo,Veřejné prostranství: co to je a jak ho využít?;Fungování obcí a úřadů;Orgány obce a kraje,high,TRUE,NA,FrBo_articles
 Fart_red_07205,good,red_Jak se zapojit do zasedání zastupitelstva(1),data/FrBo/articles/TXT,FrBo,Jak se zapojit na zasedání zastupitelstva;Fungování obcí a úřadů;Orgány obce a kraje,high,TRUE,NA,FrBo_articles
-Fart_red_5938c,good,"red_Mohou spolky ve správních žalobách používat věcné argumenty_final, odkaz na soudní ochrana spolků",data/FrBo/articles/TXT,FrBo,Mohou spolky ve správních žalobách používat věcné argumenty?;Spolky a účast veřejnsoti;Správní řízení,high,TRUE,NA,FrBo_articles
 Fart_red_5938d,good,red_Mohou spolky ve správních žalobách používat věcné argumenty_final,data/FrBo/articles/TXT,FrBo,Mohou spolky ve správních žalobách používat věcné argumenty?;Spolky a účast veřejnsoti;Správní řízení,high,TRUE,NA,FrBo_articles
 Fart_red_BRstu,good,red_Jak zajistit měření hluku,data/FrBo/articles/TXT,FrBo,Jak zajistit oficiální měření hluku?,high,TRUE,NA,FrBo_articles
 Fart_red_URn6T,good,red_Neinformování o zahájení řízení podle § 70 ZOPK úprava 2021,data/FrBo/articles/TXT,FrBo,Neinformování o zahájeném správním řízení podle § 70 zákona o ochraně přírody a krajiny,high,TRUE,NA,FrBo_articles
@@ -721,25 +721,13 @@ ombuflyer_0003,bad,Verejne-cesty,data/OmbuFlyers/originals/TXT,OmbuFlyers,Veřej
 ombuflyer_0005,bad,Vyzivovaci-povinnost,data/OmbuFlyers/originals/TXT,OmbuFlyers,"Vyživovací povinnost rodičů k dětem, stanovení výživného",NA,FALSE,NA,NA
 ombuflyer_0007,bad,Bydlení - zajištění bydlení - obecní byty,data/OmbuFlyers/originals/TXT,OmbuFlyers,Bydlení - zajištění bydlení -  obecní byty,NA,FALSE,NA,NA
 ombuflyer_0009,bad,Davky-na-bydleni,data/OmbuFlyers/originals/TXT,OmbuFlyers,Dávky na bydlení,NA,FALSE,NA,NA
-ombuflyer_0012,bad,Davky-pomoci-v-hmotne-nouzi,data/OmbuFlyers/originals/TXT,OmbuFlyers,Dávky pomoci v hmotné nouzi,NA,FALSE,NA,NA
-ombuflyer_0016,bad,Davky-pro-osoby-se-zdravotnim-postizenim,data/OmbuFlyers/originals/TXT,OmbuFlyers,Dávky pro osoby se zdravotním postižením,NA,FALSE,NA,NA
 ombuflyer_0020,bad,Detsky-domov,data/OmbuFlyers/originals/TXT,OmbuFlyers,"Dětský domov, výchovný ústav",NA,FALSE,NA,NA
-ombuflyer_0023,bad,Domaci-nasili,data/OmbuFlyers/originals/TXT,OmbuFlyers,Domácí násilí,NA,FALSE,NA,NA
 ombuflyer_0033,bad,Exekuce,data/OmbuFlyers/originals/TXT,OmbuFlyers,Exekuce,NA,FALSE,NA,NA
-ombuflyer_0035,bad,Hluk,data/OmbuFlyers/originals/TXT,OmbuFlyers,Hluk,NA,FALSE,NA,NA
 ombuflyer_0037,bad,Katastr-nemovitosti,data/OmbuFlyers/originals/TXT,OmbuFlyers,Katastr nemovitostí (nejčastější dotazy),NA,FALSE,NA,NA
 ombuflyer_0039,bad,Mediace,data/OmbuFlyers/originals/TXT,OmbuFlyers,Mediace,NA,FALSE,NA,NA
-ombuflyer_0041,bad,Komunalni-odpad,data/OmbuFlyers/originals/TXT,OmbuFlyers,Komunální odpad,NA,FALSE,NA,NA
 ombuflyer_0043,bad,Najem-bytu,data/OmbuFlyers/originals/TXT,OmbuFlyers,"Nájem bytu,  výpověď, zvyšování nájemného, přechod nájmu",NA,FALSE,NA,NA
-ombuflyer_0045,bad,Nevyplaceni-mzdy,data/OmbuFlyers/originals/TXT,OmbuFlyers,"Nevyplacení mzdy, platební neschopnost zaměstnavatele a dlužné odstupné",NA,FALSE,NA,NA
-ombuflyer_0047,bad,Obcane-EU,data/OmbuFlyers/originals/TXT,OmbuFlyers,Občané Evropské unie,NA,FALSE,NA,NA
 ombuflyer_0049,bad,Odborne-socialni-poradenstvi,data/OmbuFlyers/originals/TXT,OmbuFlyers,Odborné sociální poradenství,NA,FALSE,NA,NA
-ombuflyer_0051,bad,Oddluzeni,data/OmbuFlyers/originals/TXT,OmbuFlyers,Oddlužení (osobní bankrot),NA,FALSE,NA,NA
 ombuflyer_0056,bad,Odskodneni,data/OmbuFlyers/originals/TXT,OmbuFlyers,Odškodnění.  Desatero dobré praxe pro posouzení žádostí o odškodnění,NA,FALSE,NA,NA
-ombuflyer_0058,bad,Ochrana-spotrebitele,data/OmbuFlyers/originals/TXT,OmbuFlyers,Ochrana spotřebitele,NA,FALSE,NA,NA
-ombuflyer_0060,bad,Opatrovnictvi,data/OmbuFlyers/originals/TXT,OmbuFlyers,Opatrovník,NA,FALSE,NA,NA
-ombuflyer_0062,bad,Plisen-a-zavady-v-byte,data/OmbuFlyers/originals/TXT,OmbuFlyers,Plíseň a jiné stavební závady v bytě,NA,FALSE,NA,NA
-ombuflyer_0064,bad,Policie,data/OmbuFlyers/originals/TXT,OmbuFlyers,"Policie, státní zastupitelství",NA,FALSE,NA,NA
 ombuflyer_0066,bad,Pozemkove-urady,data/OmbuFlyers/originals/TXT,OmbuFlyers,Pozemkové úřady a Úřad pro zastupování státu ve věcech majetkových,NA,FALSE,NA,NA
 ombuflyer_0068,bad,Pracovni-urazy,data/OmbuFlyers/originals/TXT,OmbuFlyers,Pracovní úrazy a nemoci z povolání: odškodňování,NA,FALSE,NA,NA
 ombuflyer_0070,bad,Prispevek-na-peci,data/OmbuFlyers/originals/TXT,OmbuFlyers,Příspěvek na péči,NA,FALSE,NA,NA

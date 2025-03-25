@@ -137,7 +137,7 @@ df_frbo_duplicates <- df %>%
   ungroup() %>%
   filter(n >= 2)
 
-all_duplicates <- df_frbo_duplicates %>% pull(FileName)
+all_frbo_duplicates <- df_frbo_duplicates %>% pull(FileName)
 
 df_frbo_dup_wide <- df_frbo_duplicates %>%
   select(new_fname, subcorpus, Readability, n) %>%
@@ -152,7 +152,7 @@ table(df_frbo_dup_wide$Readability_KUKY, df_frbo_dup_wide$Readability_FrBo)
 
 # this is valid UNDER THE CONDITION that we construct the "good" class
 # out of high-readability texts only
-good_duplicates <- df_frbo_dup_wide %>%
+good_frbo_duplicates <- df_frbo_dup_wide %>%
   filter(
     Readability_KUKY == Readability_FrBo | (
       (Readability_KUKY == "medium" | Readability_KUKY == "low") &
@@ -161,7 +161,7 @@ good_duplicates <- df_frbo_dup_wide %>%
   ) %>%
   pull(new_fname)
 
-bad_duplicates <- setdiff(all_duplicates, good_duplicates)
+bad_frbo_duplicates <- setdiff(all_frbo_duplicates, good_frbo_duplicates)
 
 # remove FrBo/articles-originated texts from KUKY because:
 #   1. they are duplicates
@@ -173,14 +173,35 @@ df <- df %>%
   filter(subcorpus != "KUKY" | !str_detect(FileName, "red_|orig_"))
 
 # remove FrBo articles with different readability assessments by KUKY and FrBo
-df <- df %>% filter(!(FileName %in% bad_duplicates))
+df <- df %>% filter(!(FileName %in% bad_frbo_duplicates))
+
+# these two are also duplicates
+df <- df %>% filter(!(FileName %in% c(
+  "orig_Mohou spolky ve správních žalobách používat věcné argumenty_final, odkaz na soudní ochrana spolků",
+  "red_Mohou spolky ve správních žalobách používat věcné argumenty_final, odkaz na soudní ochrana spolků"
+)))
+
+# remove OmbuFlyer–KUKY duplicates with different names
+# keep the ones from KUKY
+bad_of_kuky_duplicates <- df %>%
+  filter(subcorpus %in% c("KUKY", "OmbuFlyers")) %>%
+  mutate(new_fname = str_remove(FileName, "^[0-9]{3}_")) %>%
+  group_by(new_fname) %>%
+  mutate(n = n()) %>%
+  ungroup() %>%
+  filter(n > 1 & subcorpus == "OmbuFlyers") %>%
+  select(!c(new_fname, n)) %>%
+  pull(FileName)
+bad_of_kuky_duplicates
+
+df <- df %>% filter(!(FileName %in% bad_of_kuky_duplicates))
 
 # keep only rows where either Readability or ClarityPursuit isn't NA
 # and exclude ClarityPursuit == TRUE
 df <- df %>%
   filter(!is.na(Readability) | ClarityPursuit == FALSE)
 
-# 8 duplicates remaining
+# 6 duplicates remaining
 # keep the ones from KUKY as they have a readability assessment (see above)
 df <- df %>%
   group_by(FileName) %>%
@@ -208,7 +229,7 @@ df <- df %>%
 ```{r}
 .split_prop <- 4 / 5 # proportion of testing data in the dataset
 .no_folds <- 10 # no. of folds in v-fold cross-validation
-.balance <- 4 / 9 # proportion of positive samples in the target dataset
+.balance <- 9 / 20 # proportion of positive samples in the target dataset
 
 dssize_positive <- count(df %>% filter(class == "good"))[[1, 1]]
 dssize_total <- dssize_positive / .balance
