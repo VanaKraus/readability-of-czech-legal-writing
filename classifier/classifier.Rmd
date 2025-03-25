@@ -295,7 +295,7 @@ train_lasso <- function(recipe, training_set, folds) {
   cat("Variable importance:\n")
   fitted_lasso %>%
     extract_fit_parsnip() %>%
-    vi() %>%
+    vi(lambda = best_accuracy %>% pull(penalty)) %>%
     print(n = 100)
 
   return(final_lasso)
@@ -799,10 +799,10 @@ formula_counts <- class ~
   # RuleWrongValencyCase +
   # RuleWrongVerbonominalCase +
   # RuleIncompleteConjunction +
-  sent_count +
-  word_count +
-  syllab_count +
-  char_count +
+  # sent_count +
+  # word_count +
+  # syllab_count +
+  # char_count +
   num_hapax
 
 recipe_counts_base <- recipe(formula_counts, data = training_set)
@@ -1273,7 +1273,8 @@ prepare_vi_for_comparison <- function(final_fit) {
     arrange(-Importance) %>%
     rowid_to_column("rank") %>%
     mutate(across(rank, ~ if_else(Importance == 0, NA, .x))) %>%
-    select(rank, Variable, Importance)
+    mutate(quantile = rank / n()) %>%
+    select(rank, quantile, Variable, Importance)
 }
 
 importances <- full_join(
@@ -1329,17 +1330,82 @@ importances_df <- importances %>%
 rownames(importances_df) <- importances %>% pull(Variable)
 print(importances_df)
 
-importances %>%
+importances_ranked <- importances %>%
   mutate(
     mean_rank = rowMeans(
       select(importances, starts_with("rank")),
+      na.rm = TRUE
+    ),
+    mean_quantile = rowMeans(
+      select(importances, starts_with("quantile")),
+      na.rm = TRUE
+    ),
+    general_omissions = rowSums(
+      select(importances, starts_with("Importance") & (ends_with("all") | ends_with("notl"))) == 0,
+      na.rm = TRUE
+    ),
+    specialized_omissions = rowSums(
+      select(importances, starts_with("Importance") & (ends_with("iac") | ends_with("counts"))) == 0,
       na.rm = TRUE
     ),
     no_of_irrelevance = rowSums(
       select(importances, starts_with("rank")) %>% is.na()
     )
   ) %>%
-  select(Variable, mean_rank, no_of_irrelevance) %>%
-  arrange(mean_rank) %>%
+  mutate(omissions = general_omissions + specialized_omissions)
+
+# working with the means really isn't informative, because:
+# - the means don't take predictors omitted by lassos into account
+# - the "all" and "no TL" models tend to be the same, thus they essentially get double the weight
+importances_ranked %>%
+  select(Variable, general_omissions, specialized_omissions) %>%
+  arrange(specialized_omissions, general_omissions) %>%
+  print(n = 100)
+
+importances_ranked %>%
+  select(Variable, mean_rank, mean_quantile, omissions) %>%
+  arrange(omissions, mean_quantile) %>%
   print(n = 100)
 ```
+
+## Discussing the variables
+
+We might keep predictors not thrown away by any of the more niche models for the analysis.
+
+Of course, the selection of predictor combinations for the analysis is somewhat arbitrary. We might stick by the characteristics that one group is more focused on more universal properties of the text while the other on more rare of spontaneously-occurring phenomena.
+
+The features not excluded by the model with the richer feature set are the most important ones. The absence of \*_counts from the features proves that they are not needed for the recognition of (un)readable texts. This might however be compensated by using entropy for the prediction, as the "most important" features include both regular entropy and the moving average entropy.
+
+Top RF-selected predictors seem not to be omitted completely by the lasso models; the top 20 to 25 ranks seem to overlap somewhat (even if the ordering of the predictors is different). Notable exceptions are:
+
+- `fkgl` (14th for RF.all, but omitted 3 times)
+- `cli` (27th for RF.all, but omitted 3 times)
+- `mattr.v` (30th for RF.all, but omitted 3 times; maentropy.v omitted only 2 times though)
+
+The RF-selected features start to get omitted more often from rank 38 (`RuleCaseRepetition.max_repetition_count`).
+
+# Highly deviating documents
+
+will probably need to redo this all over again
+
+## RF
+
+### KUKY/0217_6Afs_2000035_20210219141328_
+
+> truth: good
+
+### FrBo/red_Mohou spolky ve správních žalobách používat věcné argumenty_final
+
+> truth: good
+
+### FrBo/red_Mohou spolky ve správních žalobách používat věcné argumenty_final, odkaz na soudní ochrana spolků
+
+> duplicate of the previous.
+
+### KUKY/Odvolani
+
+> truth: good
+
+### FrBo/orig_Jak zajistit, aby skládka do~
+
+==TODO:== complete the list!
