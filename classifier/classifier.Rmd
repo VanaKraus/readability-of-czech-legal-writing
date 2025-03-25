@@ -753,7 +753,7 @@ formula_notl <- class ~
   smog
 
 recipe_notl_base <- recipe(
-  formula_all,
+  formula_notl,
   data = training_set
 )
 
@@ -897,6 +897,26 @@ evaluate_decision_tree <- function(model, evaluation_set) {
 ### Tidymodels
 
 ```{r}
+get_vi <- function(final_fit) {
+  model_class <- final_fit %>%
+    extract_fit_engine() %>%
+    class()
+  if ("glmnet" %in% model_class) {
+    return(final_fit$.workflow[[1]] %>%
+      extract_fit_parsnip() %>%
+      vi(lambda = final_fit %>%
+        extract_fit_parsnip() %>%
+        tidy() %>%
+        pull(penalty)))
+  } else if ("ranger" %in% model_class) {
+    return(
+      final_fit$.workflow[[1]] %>%
+        extract_fit_parsnip() %>%
+        vi()
+    )
+  }
+}
+
 evaluate_tidymodel <- function(final_wf, split) {
   final_fitted <- last_fit(final_wf, split)
 
@@ -913,11 +933,8 @@ evaluate_tidymodel <- function(final_wf, split) {
     autoplot() %>%
     print()
 
-  var_imp <- final_fitted$.workflow[[1]] %>%
-    extract_fit_parsnip() %>%
-    vi()
-  var_imp %>%
-    print(n = 100)
+  cat("Variable importance:\n")
+  get_vi(final_fitted) %>% print(n = 100)
 
   return(final_fitted)
 }
@@ -1176,8 +1193,6 @@ evaluate_decision_tree(model_dt_iac, evaluation_set)
 evaluate_decision_tree(model_dt_counts, evaluation_set)
 ```
 
-
-
 ## Lasso
 
 ### All
@@ -1185,9 +1200,9 @@ evaluate_decision_tree(model_dt_counts, evaluation_set)
 ```{r}
 lfit_lasso_all <- model_lasso_all %>% evaluate_tidymodel(split)
 lfit_lasso_all %>% get_mismatch_details(data)
-lfit_lasso_all %>%
-  lasso_get_coefficients() %>%
-  print(n = 100)
+# lfit_lasso_all %>%
+#   lasso_get_coefficients() %>%
+#   print(n = 100)
 ```
 
 ### No TL
@@ -1195,9 +1210,9 @@ lfit_lasso_all %>%
 ```{r}
 lfit_lasso_notl <- model_lasso_notl %>% evaluate_tidymodel(split)
 lfit_lasso_notl %>% get_mismatch_details(data)
-lfit_lasso_notl %>%
-  lasso_get_coefficients() %>%
-  print(n = 100)
+# lfit_lasso_notl %>%
+#   lasso_get_coefficients() %>%
+#   print(n = 100)
 ```
 
 ### IAC
@@ -1205,9 +1220,9 @@ lfit_lasso_notl %>%
 ```{r}
 lfit_lasso_iac <- model_lasso_iac %>% evaluate_tidymodel(split)
 lfit_lasso_iac %>% get_mismatch_details(data)
-lfit_lasso_iac %>%
-  lasso_get_coefficients() %>%
-  print(n = 100)
+# lfit_lasso_iac %>%
+#   lasso_get_coefficients() %>%
+#   print(n = 100)
 ```
 
 ### Counts
@@ -1215,9 +1230,9 @@ lfit_lasso_iac %>%
 ```{r}
 lfit_lasso_counts <- model_lasso_counts %>% evaluate_tidymodel(split)
 lfit_lasso_counts %>% get_mismatch_details(data)
-lfit_lasso_counts %>%
-  lasso_get_coefficients() %>%
-  print(n = 100)
+# lfit_lasso_counts %>%
+#   lasso_get_coefficients() %>%
+#   print(n = 100)
 ```
 
 ## Random forest
@@ -1248,4 +1263,83 @@ lfit_rf_iac %>% get_mismatch_details(data)
 ```{r}
 lfit_rf_counts <- model_rf_counts %>% evaluate_tidymodel(split)
 lfit_rf_counts %>% get_mismatch_details(data)
+```
+
+# Variable importances
+
+```{r}
+prepare_vi_for_comparison <- function(final_fit) {
+  model_vi <- get_vi(final_fit) %>%
+    arrange(-Importance) %>%
+    rowid_to_column("rank") %>%
+    mutate(across(rank, ~ if_else(Importance == 0, NA, .x))) %>%
+    select(rank, Variable, Importance)
+}
+
+importances <- full_join(
+  prepare_vi_for_comparison(lfit_lasso_all),
+  prepare_vi_for_comparison(lfit_lasso_notl),
+  by = "Variable",
+  suffix = c(
+    ".lasso.all",
+    ".lasso.notl"
+  )
+) %>%
+  full_join(
+    prepare_vi_for_comparison(lfit_lasso_iac),
+    by = "Variable",
+  ) %>%
+  full_join(
+    prepare_vi_for_comparison(lfit_lasso_counts),
+    by = "Variable",
+    suffix = c(
+      ".lasso.iac",
+      ".lasso.counts"
+    )
+  ) %>%
+  full_join(
+    prepare_vi_for_comparison(lfit_rf_all),
+    by = "Variable"
+  ) %>%
+  full_join(
+    prepare_vi_for_comparison(lfit_rf_notl),
+    by = "Variable",
+    suffix = c(
+      ".rf.all",
+      ".rf.notl"
+    )
+  ) %>%
+  full_join(
+    prepare_vi_for_comparison(lfit_rf_iac),
+    by = "Variable"
+  ) %>%
+  full_join(
+    prepare_vi_for_comparison(lfit_rf_counts),
+    by = "Variable",
+    suffix = c(
+      ".rf.iac",
+      ".rf.counts"
+    )
+  ) %>%
+  select(Variable, everything())
+importances_df <- importances %>%
+  select(-Variable) %>%
+  select(starts_with("rank")) %>%
+  as.data.frame()
+rownames(importances_df) <- importances %>% pull(Variable)
+print(importances_df)
+
+importances %>%
+  mutate(
+    mean_rank = rowMeans(
+      select(importances, starts_with("rank")),
+      na.rm = TRUE
+    ),
+    no_of_irrelevance = rowSums(
+      select(importances, starts_with("rank")) %>% is.na()
+    )
+  ) %>%
+  select(Variable, mean_rank, no_of_irrelevance) %>%
+  arrange(mean_rank) %>%
+  print(n = 100)
 ```

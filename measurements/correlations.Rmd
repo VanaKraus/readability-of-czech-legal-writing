@@ -151,7 +151,7 @@ cor_to_graph <- function(data) {
     select(Source, everything()) %>%
     pivot_longer(!Source, names_to = "Target", values_to = "Weight") %>%
     mutate(across(Weight, ~ abs(.x))) %>%
-    filter(Weight > .25 & Weight < 1)
+    filter(Weight > .25 & Source != Target)
 }
 
 export_to_gephi <- function(edges, ename, nname) {
@@ -166,4 +166,26 @@ edges_normed <- cor_to_graph(data_clean_normed)
 
 export_to_gephi(edges, "gephi/edges.csv")
 export_to_gephi(edges_normed, "gephi/edges_normed.csv")
+```
+
+```{r}
+library(igraph)
+
+undirect <- function(edges, col1, col2) {
+  edges %>%
+    mutate(pair = pmap_chr(
+      list(!!sym(col1), !!sym(col2)), ~ paste(sort(c(..1, ..2)), collapse = "-")
+    )) %>%
+    distinct(pair, .keep_all = TRUE) %>%
+    select(-pair)
+}
+
+edges_normed_undir <- edges_normed %>% undirect("Source", "Target")
+
+network_normed <- graph_from_data_frame(
+  edges_normed_undir,
+  directed = FALSE
+)
+
+plot(network_normed)
 ```
