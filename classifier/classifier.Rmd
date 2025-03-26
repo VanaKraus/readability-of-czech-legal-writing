@@ -273,13 +273,13 @@ train_lasso <- function(recipe, training_set, folds) {
     show_best(metric = "accuracy") %>%
     print()
 
-  best_accuracy <- lasso_tune_rs %>%
-    select_by_one_std_err(metric = "accuracy", -penalty)
+  best_roc_auc <- lasso_tune_rs %>%
+    select_by_one_std_err(metric = "roc_auc", -penalty)
 
-  cat("Best accuracy:\n")
-  print(best_accuracy)
+  cat("Best ROC AUC:\n")
+  print(best_roc_auc)
 
-  final_lasso <- lasso_tune_wf %>% finalize_workflow(best_accuracy)
+  final_lasso <- lasso_tune_wf %>% finalize_workflow(best_roc_auc)
   cat("Final workflow:\n")
   print(final_lasso)
 
@@ -295,7 +295,7 @@ train_lasso <- function(recipe, training_set, folds) {
   cat("Variable importance:\n")
   fitted_lasso %>%
     extract_fit_parsnip() %>%
-    vi(lambda = best_accuracy %>% pull(penalty)) %>%
+    vi(lambda = best_roc_auc %>% pull(penalty)) %>%
     print(n = 100)
 
   return(final_lasso)
@@ -966,14 +966,24 @@ get_mismatch_details <- function(lfit, data_orig) {
     print()
 
   cat("\n")
-  cat("Greatest deviations:\n")
-  joined %>%
+
+  deviations <- joined %>%
     filter(.pred_class != class) %>%
     mutate(deviation = .pred_good - 0.5) %>%
     mutate(abs_deviation = abs(deviation)) %>%
-    arrange(-abs_deviation) %>%
+    arrange(-abs_deviation)
+
+  cat("Greatest deviations:\n")
+  deviations %>%
     select(abs_deviation, .pred_class, class, subcorpus, FileName) %>%
     print(n = round(nrow(joined) / 5))
+
+  cat("Highest-deviating documents names:\n")
+  deviations %>%
+    filter(abs_deviation >= 0.25) %>%
+    arrange(-abs_deviation) %>%
+    pull(FileName) %>%
+    print()
 }
 ```
 
@@ -1386,26 +1396,130 @@ The RF-selected features start to get omitted more often from rank 38 (`RuleCase
 
 # Highly deviating documents
 
-will probably need to redo this all over again
+## Lasso
+
+### FrBo / orig_Jak uspořádat shromáždění
+
+> truth: bad
+
+### FrBo / orig_Zastupitelstvo_o čem a jak rozhoduje
+
+> truth: bad
+
+### KUKY / Mestsky_urad_usneseni_-_slouceni_pred
+
+> truth: good
+
+### KUKY / 2A_dokument_puvodni_vyzva_k_zaplaceni_SOP_a_k_doplneni_kast_pouceni
+
+> truth: good
+
+### FrBo / orig_Jak namítat podjatost_final
+
+> truth: bad
+
+### KUKY / Mestsky_urad_Vyzva_k_zaplaceni_nakladu_rizeni_pred
+
+> truth: good
+>
+> IAC-outlier
+
+### FrBo / orig_Jak probíhá správní řízení
+
+> truth: bad
+>
+> IAC-outlier
+
+### KUKY / Reakce_na_dopis_pracovni
+
+> truth: good
+>
+> counts-outlier
+
+### KUKY / Reakce_na_dopis_rev
+
+> truth: good
+>
+> counts-outlier
+
+### FrBo / orig_Kterých řízení se může váš spolek účastnit_FINAL
+
+> truth: bad
+>
+> counts-outlier
+
+### FrBo / red_Certifikáty autorizovaných inspektorů
+
+> truth: good
+>
+> counts-outlier
+
+### KUKY / 1A_dokument_puvodni_ustanoven_zastupce_vyzva_k_doplneni_kast_pouceni
+
+> truth: good
+>
+> counts-outlier
 
 ## RF
 
-### KUKY/0217_6Afs_2000035_20210219141328_
+### FrBo / orig_Jak uspořádat shromáždění
+
+> truth: bad
+
+### KUKY / 33 Cdo 30_2024
 
 > truth: good
 
-### FrBo/red_Mohou spolky ve správních žalobách používat věcné argumenty_final
+### KUKY / 11_vizum_pred
 
 > truth: good
 
-### FrBo/red_Mohou spolky ve správních žalobách používat věcné argumenty_final, odkaz na soudní ochrana spolků
+### FrBo / orig_Kterých řízení se může váš spolek účastnit_FINAL
 
-> duplicate of the previous.
+> truth: bad
 
-### KUKY/Odvolani
+### FrBo / orig_lhuty_v_jednani_s_urady_a_soudy
+
+> truth: bad
+
+### FrBo / orig_Zastupitelstvo_o čem a jak rozhoduje
+
+> truth: bad
+
+### FrBo / orig_Jak probíhá správní řízení
+
+> truth: bad
+
+### FrBo / orig_Jak namítat podjatost_final
+
+> truth: bad
+
+### FrBo / 142
+
+> truth: bad
+> 
+> IAC-outlier
+
+### FrBo / 64
+
+> truth: bad
+>
+> counts-outlier
+
+### FrBo / red_Certifikáty autorizovaných inspektorů
 
 > truth: good
+>
+> counts-outlier
 
-### FrBo/orig_Jak zajistit, aby skládka do~
+### KUKY / 2A_dokument_puvodni_vyzva_k_zaplaceni_SOP_a_k_doplneni_kast_pouceni
 
-==TODO:== complete the list!
+> truth: good
+>
+> counts-outlier
+
+### FrBo / orig_provokace_korupcniho_jednani
+
+> truth: bad
+>
+> counts-outlier
