@@ -141,6 +141,24 @@ data_clean_normed <- data_clean %>%
   ), ~ .x / sent_count))
 ```
 
+```{r}
+cor_matrix <- cor(data_clean)
+cnames <- names(cor_matrix %>% as_tibble())
+cor_matrix[lower.tri(cor_matrix)] <- NA
+cor_matrix <- cor_matrix %>%
+  as_tibble() %>%
+  mutate(feat1 = cnames) %>%
+  select(feat1, everything())
+
+absolute_correlations <- cor_matrix %>%
+  pivot_longer(!feat1, names_to = "feat2", values_to = "cor") %>%
+  mutate(abs_cor = abs(cor)) %>%
+  filter(feat1 != feat2 & !is.na(cor))
+
+absolute_correlations %>% ggplot(aes(x = abs_cor)) +
+  geom_histogram() +
+  labs(x = "absolute correlation", y = "no. of feature relations")
+```
 
 ```{r}
 cor_to_graph <- function(data) {

@@ -1,5 +1,5 @@
 ---
-title: Classifier
+title: Classifier(s)
 output: pdf_document
 ---
 
@@ -24,8 +24,8 @@ data %>% ggplot(aes(x = class, word_count)) +
 data_clean <- data %>%
   select(!c(
     fpath,
-    KUK_ID,
-    FileName,
+    # KUK_ID,
+    # FileName,
     FolderPath,
     # subcorpus,
     DocumentTitle,
@@ -162,6 +162,32 @@ data_clean <- data %>%
 data_clean[!complete.cases(data_clean), ]
 
 # use tidymodels::step_corr to remove high-correlating variables
+```
+
+# Important features identification
+
+```{r}
+data_clean_good <- data_clean %>% filter(class == "good")
+data_clean_bad <- data_clean %>% filter(class == "bad")
+
+# data_clean_long <- data_clean %>% pivot_longer(!c(
+#   KUK_ID,
+#   strata,
+#   class,
+#   FileName,
+#   subcorpus
+# ), names_to = "feature_name", values_to = "value")
+
+feature_importances <- tibble(feat_name = character(), p_value = numeric())
+for (i in 6:84) {
+  fname <- names(data_clean)[i]
+  p_value <- wilcox.test(
+    data_clean_bad[i] %>% pull(), data_clean_good[i] %>% pull()
+  )$p.value
+  feature_importances <- feature_importances %>%
+    add_row(feat_name = fname, p_value = p_value)
+}
+feature_importances
 ```
 
 # Prepare splits and folds
@@ -979,11 +1005,39 @@ get_mismatch_details <- function(lfit, data_orig) {
     print(n = round(nrow(joined) / 5))
 
   cat("Highest-deviating documents names:\n")
-  deviations %>%
+  highest_deviation_names <- deviations %>%
     filter(abs_deviation >= 0.25) %>%
     arrange(-abs_deviation) %>%
-    pull(FileName) %>%
-    print()
+    pull(FileName)
+
+  print(highest_deviation_names)
+
+  return(list(deviations = deviations, highest_deviations = highest_deviation_names))
+}
+
+plot_outlier <- function(doc_name, final_fit, dataset) {
+  important_variables <- get_vi(final_fit) %>%
+    head(n = 6) %>%
+    filter(Importance > 0) %>%
+    pull(Variable)
+
+  dmut <- dataset %>%
+    select(KUK_ID, FileName, class, all_of(important_variables)) %>%
+    mutate(across(all_of(important_variables), ~ scale(.x))) %>%
+    pivot_longer(
+      all_of(important_variables),
+      names_to = "feature", values_to = "value"
+    ) %>%
+    mutate(across(value, ~ .x[, 1]))
+
+  dmut %>%
+    ggplot(aes(x = class, y = value)) +
+    facet_wrap(~feature) +
+    geom_boxplot() +
+    geom_point(
+      data = dmut %>% filter(FileName == doc_name), color = "red", size = 5
+    ) +
+    labs(y = "measurements (scaled)")
 }
 ```
 
@@ -1209,7 +1263,7 @@ evaluate_decision_tree(model_dt_counts, evaluation_set)
 
 ```{r}
 lfit_lasso_all <- model_lasso_all %>% evaluate_tidymodel(split)
-lfit_lasso_all %>% get_mismatch_details(data)
+lasso_all_devs <- lfit_lasso_all %>% get_mismatch_details(data)
 # lfit_lasso_all %>%
 #   lasso_get_coefficients() %>%
 #   print(n = 100)
@@ -1219,7 +1273,7 @@ lfit_lasso_all %>% get_mismatch_details(data)
 
 ```{r}
 lfit_lasso_notl <- model_lasso_notl %>% evaluate_tidymodel(split)
-lfit_lasso_notl %>% get_mismatch_details(data)
+lasso_notl_devs <- lfit_lasso_notl %>% get_mismatch_details(data)
 # lfit_lasso_notl %>%
 #   lasso_get_coefficients() %>%
 #   print(n = 100)
@@ -1229,7 +1283,7 @@ lfit_lasso_notl %>% get_mismatch_details(data)
 
 ```{r}
 lfit_lasso_iac <- model_lasso_iac %>% evaluate_tidymodel(split)
-lfit_lasso_iac %>% get_mismatch_details(data)
+lasso_iac_devs <- lfit_lasso_iac %>% get_mismatch_details(data)
 # lfit_lasso_iac %>%
 #   lasso_get_coefficients() %>%
 #   print(n = 100)
@@ -1239,7 +1293,7 @@ lfit_lasso_iac %>% get_mismatch_details(data)
 
 ```{r}
 lfit_lasso_counts <- model_lasso_counts %>% evaluate_tidymodel(split)
-lfit_lasso_counts %>% get_mismatch_details(data)
+lasso_counts_devs <- lfit_lasso_counts %>% get_mismatch_details(data)
 # lfit_lasso_counts %>%
 #   lasso_get_coefficients() %>%
 #   print(n = 100)
@@ -1251,28 +1305,28 @@ lfit_lasso_counts %>% get_mismatch_details(data)
 
 ```{r}
 lfit_rf_all <- model_rf_all %>% evaluate_tidymodel(split)
-lfit_rf_all %>% get_mismatch_details(data)
+rf_all_devs <- lfit_rf_all %>% get_mismatch_details(data)
 ```
 
 ### No TL
 
 ```{r}
 lfit_rf_notl <- model_rf_notl %>% evaluate_tidymodel(split)
-lfit_rf_notl %>% get_mismatch_details(data)
+rf_notl_devs <- lfit_rf_notl %>% get_mismatch_details(data)
 ```
 
 ### IAC
 
 ```{r}
 lfit_rf_iac <- model_rf_iac %>% evaluate_tidymodel(split)
-lfit_rf_iac %>% get_mismatch_details(data)
+rf_iac_devs <- lfit_rf_iac %>% get_mismatch_details(data)
 ```
 
 ### Counts
 
 ```{r}
 lfit_rf_counts <- model_rf_counts %>% evaluate_tidymodel(split)
-lfit_rf_counts %>% get_mismatch_details(data)
+rf_counts_devs <- lfit_rf_counts %>% get_mismatch_details(data)
 ```
 
 # Variable importances
@@ -1376,6 +1430,33 @@ importances_ranked %>%
   select(Variable, mean_rank, mean_quantile, omissions) %>%
   arrange(omissions, mean_quantile) %>%
   print(n = 100)
+
+
+var_selection <- importances_ranked %>%
+  left_join(
+    feature_importances %>% rename(Variable = feat_name),
+    by = "Variable"
+  ) %>%
+  mutate(
+    using_classifiers = omissions < 3 | mean_quantile < 0.5,
+    using_p_value = p_value <= 0.05
+  )
+
+var_selection %>%
+  select(using_classifiers, using_p_value) %>%
+  table(useNA = "ifany")
+
+var_selection %>%
+  filter(using_classifiers & !using_p_value) %>%
+  pull(Variable)
+
+cor(log10(var_selection$p_value), var_selection$mean_quantile)
+plot(log10(var_selection$p_value), var_selection$mean_quantile)
+
+var_selection %>%
+  ggplot(aes(x = log10(p_value), y = mean_quantile, color = using_classifiers & using_p_value)) +
+  geom_point() +
+  labs(color = "use in EFA")
 ```
 
 ## Discussing the variables
@@ -1402,21 +1483,41 @@ The RF-selected features start to get omitted more often from rank 38 (`RuleCase
 
 > truth: bad
 
+```{r}
+plot_outlier("orig_Jak uspořádat shromáždění", lfit_lasso_all, data_clean)
+```
+
 ### FrBo / orig_Zastupitelstvo_o čem a jak rozhoduje
 
 > truth: bad
+
+```{r}
+plot_outlier("orig_Zastupitelstvo_o čem a jak rozhoduje", lfit_lasso_all, data_clean)
+```
 
 ### KUKY / Mestsky_urad_usneseni_-_slouceni_pred
 
 > truth: good
 
+```{r}
+plot_outlier("Mestsky_urad_usneseni_-_slouceni_pred", lfit_lasso_all, data_clean)
+```
+
 ### KUKY / 2A_dokument_puvodni_vyzva_k_zaplaceni_SOP_a_k_doplneni_kast_pouceni
 
 > truth: good
 
+```{r}
+plot_outlier("2A_dokument_puvodni_vyzva_k_zaplaceni_SOP_a_k_doplneni_kast_pouceni", lfit_lasso_all, data_clean)
+```
+
 ### FrBo / orig_Jak namítat podjatost_final
 
 > truth: bad
+
+```{r}
+plot_outlier("orig_Jak namítat podjatost_final", lfit_lasso_all, data_clean)
+```
 
 ### KUKY / Mestsky_urad_Vyzva_k_zaplaceni_nakladu_rizeni_pred
 
@@ -1424,11 +1525,19 @@ The RF-selected features start to get omitted more often from rank 38 (`RuleCase
 >
 > IAC-outlier
 
+```{r}
+plot_outlier("Mestsky_urad_Vyzva_k_zaplaceni_nakladu_rizeni_pred", lfit_lasso_iac, data_clean)
+```
+
 ### FrBo / orig_Jak probíhá správní řízení
 
 > truth: bad
 >
 > IAC-outlier
+
+```{r}
+plot_outlier("orig_Jak probíhá správní řízení", lfit_lasso_iac, data_clean)
+```
 
 ### KUKY / Reakce_na_dopis_pracovni
 
@@ -1436,11 +1545,19 @@ The RF-selected features start to get omitted more often from rank 38 (`RuleCase
 >
 > counts-outlier
 
+```{r}
+plot_outlier("Reakce_na_dopis_pracovni", lfit_lasso_counts, data_clean)
+```
+
 ### KUKY / Reakce_na_dopis_rev
 
 > truth: good
 >
 > counts-outlier
+
+```{r}
+plot_outlier("Reakce_na_dopis_rev", lfit_lasso_counts, data_clean)
+```
 
 ### FrBo / orig_Kterých řízení se může váš spolek účastnit_FINAL
 
@@ -1448,11 +1565,19 @@ The RF-selected features start to get omitted more often from rank 38 (`RuleCase
 >
 > counts-outlier
 
+```{r}
+plot_outlier("orig_Kterých řízení se může váš spolek účastnit_FINAL", lfit_lasso_counts, data_clean)
+```
+
 ### FrBo / red_Certifikáty autorizovaných inspektorů
 
 > truth: good
 >
 > counts-outlier
+
+```{r}
+plot_outlier("red_Certifikáty autorizovaných inspektorů", lfit_lasso_counts, data_clean)
+```
 
 ### KUKY / 1A_dokument_puvodni_ustanoven_zastupce_vyzva_k_doplneni_kast_pouceni
 
@@ -1460,39 +1585,75 @@ The RF-selected features start to get omitted more often from rank 38 (`RuleCase
 >
 > counts-outlier
 
+```{r}
+plot_outlier("1A_dokument_puvodni_ustanoven_zastupce_vyzva_k_doplneni_kast_pouceni", lfit_lasso_counts, data_clean)
+```
+
 ## RF
 
 ### FrBo / orig_Jak uspořádat shromáždění
 
 > truth: bad
 
+```{r}
+plot_outlier("orig_Jak uspořádat shromáždění", lfit_rf_all, data_clean)
+```
+
 ### KUKY / 33 Cdo 30_2024
 
 > truth: good
+
+```{r}
+plot_outlier("33 Cdo 30_2024", lfit_rf_all, data_clean)
+```
 
 ### KUKY / 11_vizum_pred
 
 > truth: good
 
+```{r}
+plot_outlier("11_vizum_pred", lfit_rf_all, data_clean)
+```
+
 ### FrBo / orig_Kterých řízení se může váš spolek účastnit_FINAL
 
 > truth: bad
+
+```{r}
+plot_outlier("orig_Kterých řízení se může váš spolek účastnit_FINAL", lfit_rf_all, data_clean)
+```
 
 ### FrBo / orig_lhuty_v_jednani_s_urady_a_soudy
 
 > truth: bad
 
+```{r}
+plot_outlier("orig_lhuty_v_jednani_s_urady_a_soudy", lfit_rf_all, data_clean)
+```
+
 ### FrBo / orig_Zastupitelstvo_o čem a jak rozhoduje
 
 > truth: bad
+
+```{r}
+plot_outlier("orig_Zastupitelstvo_o čem a jak rozhoduje", lfit_rf_all, data_clean)
+```
 
 ### FrBo / orig_Jak probíhá správní řízení
 
 > truth: bad
 
+```{r}
+plot_outlier("orig_Jak probíhá správní řízení", lfit_rf_all, data_clean)
+```
+
 ### FrBo / orig_Jak namítat podjatost_final
 
 > truth: bad
+
+```{r}
+plot_outlier("orig_Jak namítat podjatost_final", lfit_rf_all, data_clean)
+```
 
 ### FrBo / 142
 
@@ -1500,11 +1661,19 @@ The RF-selected features start to get omitted more often from rank 38 (`RuleCase
 > 
 > IAC-outlier
 
+```{r}
+plot_outlier("142", lfit_rf_iac, data_clean)
+```
+
 ### FrBo / 64
 
 > truth: bad
 >
 > counts-outlier
+
+```{r}
+plot_outlier("64", lfit_rf_counts, data_clean)
+```
 
 ### FrBo / red_Certifikáty autorizovaných inspektorů
 
@@ -1512,14 +1681,88 @@ The RF-selected features start to get omitted more often from rank 38 (`RuleCase
 >
 > counts-outlier
 
+```{r}
+plot_outlier("red_Certifikáty autorizovaných inspektorů", lfit_rf_counts, data_clean)
+```
+
 ### KUKY / 2A_dokument_puvodni_vyzva_k_zaplaceni_SOP_a_k_doplneni_kast_pouceni
 
 > truth: good
 >
 > counts-outlier
 
+```{r}
+plot_outlier("2A_dokument_puvodni_vyzva_k_zaplaceni_SOP_a_k_doplneni_kast_pouceni", lfit_rf_counts, data_clean)
+```
+
 ### FrBo / orig_provokace_korupcniho_jednani
 
 > truth: bad
 >
 > counts-outlier
+
+```{r}
+plot_outlier("orig_provokace_korupcniho_jednani", lfit_rf_counts, data_clean)
+```
+
+## Summary
+
+All outliers (*notl* models excluded since they're the same as *all*):
+
+```{r}
+table(c(
+  lasso_all_devs$highest_deviations,
+  lasso_iac_devs$highest_deviations,
+  lasso_counts_devs$highest_deviations,
+  rf_all_devs$highest_deviations,
+  rf_iac_devs$highest_deviations,
+  rf_counts_devs$highest_deviations
+)) %>% sort(decreasing = TRUE)
+```
+
+Lasso outliers:
+
+```{r}
+table(c(
+  lasso_all_devs$highest_deviations,
+  lasso_iac_devs$highest_deviations,
+  lasso_counts_devs$highest_deviations
+)) %>% sort(decreasing = TRUE)
+```
+
+RF outliers:
+
+```{r}
+table(c(
+  rf_all_devs$highest_deviations,
+  rf_iac_devs$highest_deviations,
+  rf_counts_devs$highest_deviations
+)) %>% sort(decreasing = TRUE)
+```
+
+*all*-models outliers:
+
+```{r}
+table(c(
+  lasso_all_devs$highest_deviations,
+  rf_all_devs$highest_deviations
+)) %>% sort(decreasing = TRUE)
+```
+
+*iac*-models outliers:
+
+```{r}
+table(c(
+  lasso_iac_devs$highest_deviations,
+  rf_iac_devs$highest_deviations
+)) %>% sort(decreasing = TRUE)
+```
+
+*counts*-models outliers:
+
+```{r}
+table(c(
+  lasso_counts_devs$highest_deviations,
+  rf_counts_devs$highest_deviations
+)) %>% sort(decreasing = TRUE)
+```
