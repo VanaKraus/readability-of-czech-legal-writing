@@ -162,13 +162,17 @@ data_clean <- data %>%
 data_clean[!complete.cases(data_clean), ]
 
 # use tidymodels::step_corr to remove high-correlating variables
+
+data_clean_scaled <- data_clean %>%
+  mutate(across(class, ~ .x == "good")) %>%
+  mutate(across(RuleAbstractNouns:word_count, ~ scale(.x)))
 ```
 
 # Important features identification
 
 ```{r}
-data_clean_good <- data_clean %>% filter(class == "good")
-data_clean_bad <- data_clean %>% filter(class == "bad")
+data_clean_good <- data_clean_scaled %>% filter(class == "good")
+data_clean_bad <- data_clean_scaled %>% filter(class == "bad")
 
 # data_clean_long <- data_clean %>% pivot_longer(!c(
 #   KUK_ID,
@@ -178,14 +182,27 @@ data_clean_bad <- data_clean %>% filter(class == "bad")
 #   subcorpus
 # ), names_to = "feature_name", values_to = "value")
 
-feature_importances <- tibble(feat_name = character(), p_value = numeric())
+feature_importances <- tibble(
+  feat_name = character(), p_value_wilcox = numeric(), p_value_glm = numeric()
+)
+
 for (i in 6:84) {
   fname <- names(data_clean)[i]
-  p_value <- wilcox.test(
+
+  # Wilcoxon
+  p_value_wilcox <- wilcox.test(
     data_clean_bad[i] %>% pull(), data_clean_good[i] %>% pull()
   )$p.value
+
+  # glm
+  formula_single <- reformulate(fname, "class")
+  glm_model <- glm(formula_single, data_clean, family = "binomial")
+  glm_coefficients <- summary(glm_model)$coefficients
+  row_index <- which(rownames(glm_coefficients) == fname)
+  p_value_glm <- glm_coefficients[row_index, 4]
+
   feature_importances <- feature_importances %>%
-    add_row(feat_name = fname, p_value = p_value)
+    add_row(feat_name = fname, p_value_wilcox = p_value_wilcox, p_value_glm = p_value_glm)
 }
 feature_importances
 ```
@@ -1439,18 +1456,39 @@ var_selection <- importances_ranked %>%
   ) %>%
   mutate(
     using_classifiers = omissions < 3 | mean_quantile < 0.5,
-    using_p_value = p_value <= 0.05
+    using_p_value_wilcox = p_value_wilcox <= 0.05,
+    using_p_value_glm = p_value_glm <= 0.05
   )
 
 var_selection %>%
-  select(using_classifiers, using_p_value) %>%
+  select(using_classifiers, using_p_value_wilcox) %>%
   table(useNA = "ifany")
 
 var_selection %>%
-  filter(using_classifiers & !using_p_value) %>%
+  select(using_p_value_glm, using_p_value_wilcox) %>%
+  table(useNA = "ifany")
+
+var_selection %>%
+  select(using_classifiers, using_p_value_glm) %>%
+  table(useNA = "ifany")
+
+var_selection %>%
+  filter(using_classifiers & !using_p_value_wilcox) %>%
   pull(Variable)
 
-cor(log10(var_selection$p_value), var_selection$mean_quantile)
+var_selection %>%
+  filter(using_p_value_glm & !using_p_value_wilcox) %>%
+  pull(Variable)
+
+var_selection %>%
+  filter(!using_p_value_glm & using_p_value_wilcox) %>%
+  pull(Variable)
+
+cor(
+  log10(var_selection$p_value_wilcox),
+  log10(var_selection$p_value_glm),
+  var_selection$mean_quantile
+)
 plot(log10(var_selection$p_value), var_selection$mean_quantile)
 
 var_selection %>%
@@ -1458,6 +1496,9 @@ var_selection %>%
   geom_point() +
   labs(color = "use in EFA")
 ```
+
+It may be more intuitive to stick to the p-values **produced by GLMs** instead of the ones of the Wilcoxon test, beacuse GLM p-values are easier to interpret as indicating the "usefulness" of the associated predictor, whereas the Wilcoxon test tests for a significant difference in medians of the two distributions, which is very similar (and gives similar results), but the intuition behind the logic isn't as clear. Afterall, we're trying to select useful predictors.
+
 
 ## Discussing the variables
 

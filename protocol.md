@@ -23,4 +23,5 @@ Documents parsed on 2025-03-08 using `czech-pdt-ud-2.15-241121`.
 
 # Classifiers
 
-1. run `classifier/classifier.Rmd`
+~~1. run `classifier/classifier.Rmd`~~
+
