@@ -1,5 +1,5 @@
 ---
-title: Feature selection
+title: EFA
 output: pdf_document
 ---
 
@@ -9,7 +9,16 @@ output: pdf_document
 
 set.seed(42)
 library(igraph)
+library(QuantPsyc) # for the multivariate normality test
+library(nFactors) # for the scree plot
+library(psych) # for PA FA
 library(tidyverse)
+
+library(paletteer) # color palettes
+
+library(conflicted) # to resolve QuantPsyc x dplyr conflicts
+conflict_prefer("select", "dplyr")
+conflict_prefer("filter", "dplyr")
 ```
 
 # Load and tidy data
@@ -163,8 +172,13 @@ data_clean <- data %>%
     RuleWrongValencyCase,
     RuleWrongVerbonominalCase
   )) %>%
+  # remove artificially limited variables
+  select(!c(
+    RuleCaseRepetition.max_repetition_frac,
+    RuleCaseRepetition.max_repetition_frac.v
+  )) %>%
   # remove further variables belonging to the 'acceptability' category
-  select(!RuleIncompleteConjunction) %>%
+  select(!c(RuleIncompleteConjunction)) %>%
   mutate(across(c(class), ~ as.factor(.x)))
 
 # no NAs should be present now
@@ -185,7 +199,7 @@ feature_importances <- tibble(
   feat_name = character(), p_value = numeric()
 )
 
-for (i in 5:73) {
+for (i in 5:ncol(data_clean)) {
   fname <- names(data_clean)[i]
 
   formula_single <- reformulate(fname, "class")
@@ -208,48 +222,97 @@ selected_features <- feature_importances %>%
 
 # Correlations
 
+See Levshina (2015: 353--54).
+
 ```{r}
-data_pure <- data_clean %>% select(any_of(selected_features))
+analyze_correlation <- function(data) {
+  cor_matrix <- cor(data)
 
-cor_matrix <- cor(data_pure)
+  cor_tibble_long <- cor_matrix %>%
+    as_tibble() %>%
+    mutate(feat1 = rownames(cor_matrix)) %>%
+    pivot_longer(!feat1, names_to = "feat2", values_to = "cor") %>%
+    mutate(abs_cor = abs(cor))
 
-cor_tibble_long <- cor_matrix %>%
-  as_tibble() %>%
-  mutate(feat1 = selected_features) %>%
-  pivot_longer(!feat1, names_to = "feat2", values_to = "cor") %>%
-  mutate(abs_cor = abs(cor))
+  cor_matrix_upper <- cor_matrix
+  cor_matrix_upper[lower.tri(cor_matrix_upper)] <- 0
 
-cor_matrix_upper <- cor_matrix
-cor_matrix_upper[lower.tri(cor_matrix_upper)] <- 0
+  cor_tibble_long_upper <- cor_matrix_upper %>%
+    as_tibble() %>%
+    mutate(feat1 = rownames(cor_matrix)) %>%
+    pivot_longer(!feat1, names_to = "feat2", values_to = "cor") %>%
+    mutate(abs_cor = abs(cor)) %>%
+    filter(feat1 != feat2 & abs_cor > 0)
 
-cor_tibble_long_upper <- cor_matrix_upper %>%
-  as_tibble() %>%
-  mutate(feat1 = selected_features) %>%
-  pivot_longer(!feat1, names_to = "feat2", values_to = "cor") %>%
-  mutate(abs_cor = abs(cor)) %>%
-  filter(feat1 != feat2)
-cor_tibble_long_upper_considerable <- cor_tibble_long_upper %>%
-  filter(abs_cor >= 0.3)
+  list(
+    cor_matrix = cor_matrix,
+    cor_matrix_upper = cor_matrix_upper,
+    cor_tibble_long = cor_tibble_long,
+    cor_tibble_long_upper = cor_tibble_long_upper
+  )
+}
 
-max_correlations <- cor_tibble_long %>%
+data_purish <- data_clean %>% select(any_of(selected_features))
+```
+
+## High correlations
+
+```{r}
+analyze_correlation(data_purish)$cor_tibble_long %>%
+  filter(feat1 != feat2 & abs_cor > 0.9) %>%
+  arrange(feat1, -abs_cor) %>%
+  print(n = 100)
+```
+
+exclude: 
+
+- **ari:** corr. w/ RuleLongSentences.max_length > 0.94; sentence length seems more universal, let's make it a substitute 
+- **gf:** corr. w/ RuleLongSentences.max_length > 0.92; sentence length seems more universal, let's make it a substitute
+- **maentropy:** corr. w/ mattr > 0.96, but mattr is implemented in QuitaUp. besides, the interesting thing about maentropy is its variation
+- **smog:** corr. w/ fkgl almost 0.95, but fkgl coefficients adjusted for Czech are available
+- **atl:** corr. w/ cli around 0.96; unlike cli, atl is not a readability metric
+
+```{r}
+data_pureish_striphigh <- data_purish %>% select(!c(
+  ari, gf, maentropy, smog, atl
+))
+
+analyze_correlation(data_pureish_striphigh)$cor_tibble_long %>%
+  filter(feat1 != feat2 & abs_cor > 0.9) %>%
+  arrange(feat1, -abs_cor) %>%
+  print(n = 100)
+```
+
+## Low correlations
+
+```{r}
+low_correlating_features <- analyze_correlation(data_pureish_striphigh)$
+  cor_tibble_long %>%
   filter(feat1 != feat2) %>%
   group_by(feat1) %>%
-  summarize(maxcor = max(abs_cor)) %>%
-  ungroup()
+  summarize(max_cor = max(abs_cor)) %>%
+  filter(max_cor < 0.3) %>%
+  pull(feat1)
+
+feature_importances %>% filter(feat_name %in% low_correlating_features)
+
+data_pure <- data_pureish_striphigh %>%
+  select(!any_of(low_correlating_features))
 ```
 
 ## Visualisation
 
 ```{r fig.width=12, fig.height=12, fig.align='center'}
-library(paletteer)
-
 my_colors <- paletteer::paletteer_d("ggthemes::Classic_10_Medium")
 
+network_edges <- analyze_correlation(data_pure)$cor_tibble_long_upper %>%
+  filter(abs_cor > 0.3)
+
 network <- graph_from_data_frame(
-  cor_tibble_long_upper_considerable,
+  network_edges,
   directed = FALSE
 )
-E(network)$weight <- cor_tibble_long_upper_considerable$abs_cor
+E(network)$weight <- network_edges$abs_cor
 network_communities <- cluster_optimal(network)
 
 network_membership <- membership(network_communities)
@@ -266,5 +329,53 @@ plot(
   # vertex.label.family = "Public Sans",
   vertex.label.color = "black",
   vertex.label.cex = 0.5
+)
+```
+
+# Scaling
+
+```{r}
+data_scaled <- data_pure %>%
+  mutate(across(1:length(colnames(data_pure)), ~ scale(.x)))
+```
+
+# Check for normality
+
+```{r}
+mult.norm(data_pureish_striphigh %>% as.data.frame())$mult.test
+```
+
+Low (null) p-values show that we can reject the hypothesis that the data would be in a multivariate normal distribution. I.e. the distribution isn't multivariate normal.
+
+# FA
+
+## No. of factors
+
+```{r}
+eigen <- eigen(cor(data_scaled))
+par <- nFactors::parallel(
+  subject = nrow(data_scaled),
+  var = ncol(data_scaled),
+  rep = 100,
+  quantile = .05,
+  model = "factors"
+)
+scree <- nScree(x = eigen$values, aparallel = par$eigen$qevpea)
+plotnScree(scree)
+```
+
+## Model
+
+<https://www.rdocumentation.org/packages/psych/versions/2.5.3/topics/fa>
+
+```{r}
+fa(
+  cor(data_scaled),
+  nfactors = 2,
+  fm = "pa",
+  rotate = "promax",
+  oblique.scores = TRUE
+  # n.obs = nrow(data_scaled),
+  # n.iter = 2
 )
 ```
