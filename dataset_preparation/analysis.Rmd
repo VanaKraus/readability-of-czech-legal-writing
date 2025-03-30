@@ -9,6 +9,7 @@ output: pdf_document
 library(tidyverse)
 library(tidymodels)
 library(jsonlite)
+library(psych)
 
 set.seed(42)
 
@@ -40,7 +41,8 @@ kuky_orig <- fromJSON("../corpora/KUKY/argumentative.json")$documents %>%
   select(KUK_ID, everything())
 
 kuky_kuk <- load_kuk_subcorpus_metadata("KUKY") %>%
-  filter(FolderPath == "data/KUKY/TXT")
+  filter(FolderPath == "data/KUKY/TXT") %>%
+  select(!c(Anonymized, RecipientType, RecipientIndividuation, AuthorType, Objectivity, LegalActType, Bindingness))
 
 kuky <- kuky_kuk %>% full_join(kuky_orig, by = "KUK_ID")
 czcdc <- load_kuk_subcorpus_metadata("CzCDC")
@@ -146,9 +148,19 @@ df_frbo_dup_wide <- df_frbo_duplicates %>%
     names_from = subcorpus,
     values_from = Readability,
     names_prefix = "Readability_"
+  ) %>%
+  mutate(
+    class_KUKY = as.factor(if_else(Readability_KUKY == "high", "good", "bad")),
+    class_FrBo = as.factor(if_else(Readability_FrBo == "high", "good", "bad"))
   )
 
 table(df_frbo_dup_wide$Readability_KUKY, df_frbo_dup_wide$Readability_FrBo)
+
+readability_agreement <- df_frbo_dup_wide %>%
+  select(class_KUKY, class_FrBo) %>%
+  table()
+readability_agreement
+cohen.kappa(readability_agreement)
 
 # this is valid UNDER THE CONDITION that we construct the "good" class
 # out of high-readability texts only

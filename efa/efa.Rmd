@@ -24,6 +24,7 @@ conflict_prefer("filter", "dplyr")
 # Load and tidy data
 
 ```{r}
+pretty_names <- read_csv("../feat_name_mapping.csv")
 data <- read_csv("../measurements/measurements.csv")
 
 data_clean <- data %>%
@@ -258,8 +259,10 @@ data_purish <- data_clean %>% select(any_of(selected_features))
 ## High correlations
 
 ```{r}
+.hcorrcutoff <- 0.9
+
 analyze_correlation(data_purish)$cor_tibble_long %>%
-  filter(feat1 != feat2 & abs_cor > 0.9) %>%
+  filter(feat1 != feat2 & abs_cor > .hcorrcutoff) %>%
   arrange(feat1, -abs_cor) %>%
   print(n = 100)
 ```
@@ -275,10 +278,16 @@ exclude:
 ```{r}
 data_pureish_striphigh <- data_purish %>% select(!c(
   ari, gf, maentropy, smog, atl
+  # ari, gf, maentropy, smog, atl, fkgl, RuleTooFewVerbs.min_verb_frac
+  # ari, gf, maentropy, smog, atl, num_hapax
+  # ari, gf, maentropy, smog, atl, num_hapax, fkgl, RuleTooFewVerbs.min_verb_frac
+  # ari, gf, maentropy, smog, atl, num_hapax, fkgl, RuleTooFewVerbs.min_verb_frac, RuleTooFewVerbs.min_verb_frac.v
+  # ari, gf, maentropy, smog, atl, num_hapax, fkgl, RuleTooFewVerbs.min_verb_frac.v
+  # ari, gf, maentropy, smog, atl, RuleTooFewVerbs.min_verb_frac, RuleTooFewVerbs.min_verb_frac.v
 ))
 
 analyze_correlation(data_pureish_striphigh)$cor_tibble_long %>%
-  filter(feat1 != feat2 & abs_cor > 0.9) %>%
+  filter(feat1 != feat2 & abs_cor > .hcorrcutoff) %>%
   arrange(feat1, -abs_cor) %>%
   print(n = 100)
 ```
@@ -286,18 +295,31 @@ analyze_correlation(data_pureish_striphigh)$cor_tibble_long %>%
 ## Low correlations
 
 ```{r}
+# 0.35 instead of 0.3 otherwise the FA bootstrapping would freeze
+.lcorrcutoff <- 0.35
+
 low_correlating_features <- analyze_correlation(data_pureish_striphigh)$
   cor_tibble_long %>%
   filter(feat1 != feat2) %>%
   group_by(feat1) %>%
   summarize(max_cor = max(abs_cor)) %>%
-  filter(max_cor < 0.3) %>%
+  filter(max_cor < .lcorrcutoff) %>%
   pull(feat1)
 
 feature_importances %>% filter(feat_name %in% low_correlating_features)
 
 data_pure <- data_pureish_striphigh %>%
   select(!any_of(low_correlating_features))
+
+cnames <- map(
+  colnames(data_pure),
+  function(x) {
+    pull(pretty_names %>%
+      filter(name_orig == x), name_pretty)
+  }
+) %>% unlist()
+
+colnames(data_pure) <- cnames
 ```
 
 ## Visualisation
@@ -328,7 +350,7 @@ plot(
   # vertex.frame.color = "#00000000",
   # vertex.label.family = "Public Sans",
   vertex.label.color = "black",
-  vertex.label.cex = 0.5
+  vertex.label.cex = 0.7
 )
 ```
 
@@ -336,7 +358,7 @@ plot(
 
 ```{r}
 data_scaled <- data_pure %>%
-  mutate(across(1:length(colnames(data_pure)), ~ scale(.x)))
+  mutate(across(1:length(colnames(data_pure)), ~ scale(.x)[, 1]))
 ```
 
 # Check for normality
@@ -357,11 +379,13 @@ par <- nFactors::parallel(
   subject = nrow(data_scaled),
   var = ncol(data_scaled),
   rep = 100,
-  quantile = .05,
+  quantile = .95,
   model = "factors"
 )
 scree <- nScree(x = eigen$values, aparallel = par$eigen$qevpea)
 plotnScree(scree)
+
+fa.parallel(data_scaled, fm = "pa", fa = "fa", n.iter = 20)
 ```
 
 ## Model
@@ -369,13 +393,72 @@ plotnScree(scree)
 <https://www.rdocumentation.org/packages/psych/versions/2.5.3/topics/fa>
 
 ```{r}
-fa(
-  cor(data_scaled),
-  nfactors = 2,
+# appears to be the happiest when nfactors = 6 or 7
+# throws the The estimated weights for the factor scores are probably incorrect.
+# Try a different factor score estimation method. warning otherwise
+fa_res <- fa(
+  data_scaled,
+  nfactors = 7,
   fm = "pa",
   rotate = "promax",
-  oblique.scores = TRUE
-  # n.obs = nrow(data_scaled),
-  # n.iter = 2
+  oblique.scores = TRUE,
+  scores = "tenBerge",
+  n.iter = 100
 )
+fa_res
+```
+
+### Loadings
+
+```{r}
+fa_res$loadings
+
+for (i in 1:fa_res$factors) {
+  cat("\n-----", colnames(fa_res$loadings)[i], "-----\n")
+
+  loadings <- fa_res$loadings[, i]
+  load_df <- data.frame(loading = loadings)
+
+  load_df_filtered <- load_df %>%
+    mutate(abs_l = abs(loading)) %>%
+    arrange(-abs_l) %>%
+    filter(abs_l > 0.3)
+
+  load_df_filtered %>%
+    round(3) %>%
+    print()
+
+  cat("\n")
+}
+```
+
+hypotheses:
+
+- **PA1:** written, formal register (complex) vs. more spoken-like register
+  - long, severely complex, nominalized sentences / shorter, more verbal sentences
+- **PA4:** structure size? elaboratedness of expression? advancement (in years of age)?
+  - short words, short sentences, more negations / long words, long sentences, more objects
+  - cli: word complexity - sentence easiness
+  - the negations might be because of the varying sentence length
+- **PA2:** text length & enumerations
+- **PA3:** intra-text (syntactic, possibly content-related) variation
+  - note that the loadings of `VERBfrac.v` and `NEGcount.v` are negligible
+  - however, the loading of `entropy.v` is significant
+- **PA5:** negation
+- **PA6:** passive / active
+- **PA7:** unique words
+
+> **NOTE:** variables with low communalities are excluded from the analysis, yet still likely play a role in legal writing readability. this includes both those selected for the analysis and the excluded ones.
+>
+> **NOTE:** some high-correlating variables were excluded from the FA.
+
+Strong correlations:
+
+- **PA1–PA3:** possible register switching
+- **PA4–PA5:** expression sophisticatedness
+
+### Uniquenesses
+
+```{r}
+fa_res$uniquenesses %>% round(3)
 ```
