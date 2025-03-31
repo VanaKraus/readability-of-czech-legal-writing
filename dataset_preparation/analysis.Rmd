@@ -324,22 +324,24 @@ df <- df %>% filter(
 
 table(df$subcorpus, df$class)
 
-write_csv(
-  df %>%
-    select(
-      KUK_ID,
-      class,
-      FileName,
-      FolderPath,
-      subcorpus,
-      DocumentTitle,
-      Readability,
-      ClarityPursuit,
-      SyllogismBased,
-      SourceDB
-    ),
-  "selected_documents.csv"
-)
+write_csv(df, "selected_documents.csv")
+
+# write_csv(
+#   df %>%
+#     select(
+#       KUK_ID,
+#       class,
+#       FileName,
+#       FolderPath,
+#       subcorpus,
+#       DocumentTitle,
+#       Readability,
+#       ClarityPursuit,
+#       SyllogismBased,
+#       SourceDB
+#     ),
+#   "selected_documents.csv"
+# )
 
 # the split and folds aren't needed at the moment
 # they'll be required in the training phase
