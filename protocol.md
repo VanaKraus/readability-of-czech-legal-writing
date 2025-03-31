@@ -21,7 +21,10 @@ Documents parsed on 2025-03-08 using `czech-pdt-ud-2.15-241121`.
 
 1. `python3 measurements/run_measurements.py -s file_processing/selected_documents.csv -u http://localhost:8000/raw -c measurements/measurements.csv`
 
-# Classifiers
+~~# Classifiers~~
 
 ~~1. run `classifier/classifier.Rmd`~~
 
+# EFA
+
+1. run `efa/efa.Rmd`

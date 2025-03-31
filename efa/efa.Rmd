@@ -4,10 +4,8 @@ output: pdf_document
 ---
 
 ```{r}
-# library(extrafont)
-# extrafont::loadfonts(quiet = TRUE)
-
 set.seed(42)
+
 library(igraph)
 library(QuantPsyc) # for the multivariate normality test
 library(nFactors) # for the scree plot
@@ -26,6 +24,8 @@ conflict_prefer("filter", "dplyr")
 ```{r}
 pretty_names <- read_csv("../feat_name_mapping.csv")
 data <- read_csv("../measurements/measurements.csv")
+
+.firstnonmetacolumn <- 17
 
 data_clean <- data %>%
   select(!c(
@@ -187,7 +187,7 @@ data_clean[!complete.cases(data_clean), ]
 
 data_clean_scaled <- data_clean %>%
   mutate(across(class, ~ .x == "good")) %>%
-  mutate(across(5:length(names(data_clean)), ~ scale(.x)))
+  mutate(across(.firstnonmetacolumn:length(names(data_clean)), ~ scale(.x)))
 ```
 
 # Important features identification
@@ -200,11 +200,10 @@ feature_importances <- tibble(
   feat_name = character(), p_value = numeric()
 )
 
-for (i in 5:ncol(data_clean)) {
+for (i in .firstnonmetacolumn:ncol(data_clean)) {
   fname <- names(data_clean)[i]
 
   formula_single <- reformulate(fname, "class")
-  # print(formula_single)
 
   glm_model <- glm(formula_single, data_clean, family = "binomial")
   glm_coefficients <- summary(glm_model)$coefficients
@@ -278,12 +277,6 @@ exclude:
 ```{r}
 data_pureish_striphigh <- data_purish %>% select(!c(
   ari, gf, maentropy, smog, atl
-  # ari, gf, maentropy, smog, atl, fkgl, RuleTooFewVerbs.min_verb_frac
-  # ari, gf, maentropy, smog, atl, num_hapax
-  # ari, gf, maentropy, smog, atl, num_hapax, fkgl, RuleTooFewVerbs.min_verb_frac
-  # ari, gf, maentropy, smog, atl, num_hapax, fkgl, RuleTooFewVerbs.min_verb_frac, RuleTooFewVerbs.min_verb_frac.v
-  # ari, gf, maentropy, smog, atl, num_hapax, fkgl, RuleTooFewVerbs.min_verb_frac.v
-  # ari, gf, maentropy, smog, atl, RuleTooFewVerbs.min_verb_frac, RuleTooFewVerbs.min_verb_frac.v
 ))
 
 analyze_correlation(data_pureish_striphigh)$cor_tibble_long %>%
@@ -347,8 +340,6 @@ plot(
     function(x) my_colors[x]
   ) %>% unlist(use.names = FALSE),
   vertex.size = 6,
-  # vertex.frame.color = "#00000000",
-  # vertex.label.family = "Public Sans",
   vertex.label.color = "black",
   vertex.label.cex = 0.7
 )
@@ -474,22 +465,83 @@ data_factors_long <- data_factors %>%
     ~ factor(.x, levels = c("PA1", "PA4", "PA2", "PA3", "PA5", "PA6", "PA7"))
   ))
 
-data_factors_long %>% ggplot(aes(x = factor_score, y = 0, color = subcorpus)) +
+data_factors_long %>%
+  ggplot(aes(x = factor_score, y = class)) +
   facet_grid(factor ~ .) +
-  ylim(-0.5, 0.5) +
-  theme(
-    axis.title.y = element_blank(),
-    axis.text.y = element_blank(),
-    axis.ticks.y = element_blank(),
-    legend.position = "bottom"
-  ) +
-  geom_jitter(width = 0, height = 0.3, alpha = 0.3)
+  theme(legend.position = "bottom") +
+  geom_jitter(width = 0, height = 0.1, alpha = 0.2)
 
 data_factors_long %>% ggplot(aes(x = factor_score, y = class)) +
   geom_boxplot() +
   facet_grid(factor ~ .)
 
+data_factors_long %>%
+  ggplot(aes(x = factor_score, y = subcorpus, color = class)) +
+  facet_grid(factor ~ .) +
+  theme(legend.position = "bottom") +
+  geom_jitter(width = 0, height = 0.1, alpha = 0.2)
+
 data_factors_long %>% ggplot(aes(x = factor_score, y = subcorpus)) +
   geom_boxplot() +
   facet_grid(factor ~ .)
+
+data_factors_long %>%
+  ggplot(aes(x = factor_score, y = AuthorType, color = class)) +
+  facet_grid(factor ~ .) +
+  theme(legend.position = "bottom") +
+  geom_jitter(width = 0, height = 0.1, alpha = 0.2)
+
+data_factors_long %>%
+  ggplot(aes(x = factor_score, y = AuthorType)) +
+  facet_grid(factor ~ .) +
+  theme(legend.position = "bottom") +
+  geom_boxplot()
+
+data_factors_long %>%
+  ggplot(aes(x = factor_score, y = RecipientType, color = class)) +
+  facet_grid(factor ~ .) +
+  theme(legend.position = "bottom") +
+  geom_jitter(width = 0, height = 0.1, alpha = 0.2)
+
+data_factors_long %>%
+  ggplot(aes(x = factor_score, y = RecipientType)) +
+  facet_grid(factor ~ .) +
+  theme(legend.position = "bottom") +
+  geom_boxplot()
+
+data_factors_long %>%
+  ggplot(aes(x = factor_score, y = RecipientIndividuation, color = class)) +
+  facet_grid(factor ~ .) +
+  theme(legend.position = "bottom") +
+  geom_jitter(width = 0, height = 0.1, alpha = 0.2)
+
+data_factors_long %>%
+  ggplot(aes(x = factor_score, y = RecipientIndividuation)) +
+  facet_grid(factor ~ .) +
+  theme(legend.position = "bottom") +
+  geom_boxplot()
+
+data_factors_long %>%
+  ggplot(aes(x = factor_score, y = Objectivity, color = class)) +
+  facet_grid(factor ~ .) +
+  theme(legend.position = "bottom") +
+  geom_jitter(width = 0, height = 0.1, alpha = 0.2)
+
+data_factors_long %>%
+  ggplot(aes(x = factor_score, y = Objectivity)) +
+  facet_grid(factor ~ .) +
+  theme(legend.position = "bottom") +
+  geom_boxplot()
+
+data_factors_long %>%
+  ggplot(aes(x = factor_score, y = Bindingness, color = class)) +
+  facet_grid(factor ~ .) +
+  theme(legend.position = "bottom") +
+  geom_jitter(width = 0, height = 0.1, alpha = 0.2)
+
+data_factors_long %>%
+  ggplot(aes(x = factor_score, y = Bindingness)) +
+  facet_grid(factor ~ .) +
+  theme(legend.position = "bottom") +
+  geom_boxplot()
 ```
