@@ -7,6 +7,7 @@ output: pdf_document
 set.seed(42)
 
 library(caret)
+library(car)
 library(tidyverse)
 library(tidymodels)
 ```
@@ -593,6 +594,8 @@ add_corr_remove_step <- function(recipe, training_set) {
 }
 ```
 
+Remove `fkgl` from the formulas as it's very similar to `fre`.
+
 ### All variables
 
 ```{r}
@@ -682,7 +685,7 @@ formula_all <- class ~
   hpoint +
   atl +
   fre +
-  fkgl +
+  # fkgl +
   gf +
   smog
 
@@ -791,7 +794,7 @@ formula_notl <- class ~
   hpoint +
   atl +
   fre +
-  fkgl +
+  # fkgl +
   gf +
   smog
 
@@ -904,7 +907,7 @@ formula_iac <- class ~
   hpoint +
   atl +
   fre +
-  fkgl +
+  # fkgl +
   gf +
   smog
 
@@ -1085,11 +1088,21 @@ training_set_modif <- training_set %>%
 ## All variables
 
 ```{r}
-glm(
+glm_all <- glm(
   formula_all,
   data = training_set_modif,
   family = binomial(link = "logit")
-) %>% summary()
+)
+glm_all %>% summary()
+```
+
+Variation inflation (>5 is considered bad; sometimes the threshold is >10).
+
+```{r}
+glm_all %>%
+  vif() %>%
+  as.data.frame() %>%
+  filter(. > 5)
 ```
 
 ## Indicators, averages, and coefficients
