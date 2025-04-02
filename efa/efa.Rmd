@@ -180,6 +180,38 @@ data_clean <- data %>%
   )) %>%
   # remove further variables belonging to the 'acceptability' category
   select(!c(RuleIncompleteConjunction)) %>%
+  # # remove variation coefficients theoretically coinciding with their means too strongly
+  # select(!c(
+  #   RuleDoubleAdpos.max_allowable_distance.v,
+  #   RuleTooManyNegations.max_negation_frac.v,
+  #   RuleTooManyNegations.max_allowable_negations.v
+  # )) %>%
+  # remove features expected to have low communalities
+  select(!c(
+    RuleDoubleAdpos.max_allowable_distance,
+    RuleDoubleAdpos.max_allowable_distance.v,
+    RuleGPwordorder,
+    RuleLiteraryStyle,
+    maentropy.v,
+    RuleTooManyNegations.max_negation_frac,
+    RulePredSubjDistance.max_distance,
+    RuleTooManyNegations.max_allowable_negations,
+    RuleTooManyNegations.max_allowable_negations.v,
+    RuleTooManyNominalConstructions.max_allowable_nouns.v,
+    RuleTooFewVerbs.min_verb_frac.v,
+    RulePredObjDistance.max_distance.v,
+    RulePredObjDistance.max_distance,
+    # RuleInfVerbDistance.max_distance,
+    RulePredAtClauseBeginning.max_order.v,
+    RuleInfVerbDistance
+    # RulePredSubjDistance
+  )) %>%
+  # remove features expected to have low loadings
+  select(!c(
+    RuleMultiPartVerbs.max_distance.v,
+    RulePredSubjDistance.max_distance.v,
+    RuleLongSentences.max_length
+  )) %>%
   mutate(across(c(class), ~ as.factor(.x)))
 
 # no NAs should be present now
@@ -253,6 +285,24 @@ analyze_correlation <- function(data) {
 }
 
 data_purish <- data_clean %>% select(any_of(selected_features))
+```
+
+## Extremely non-normal data
+
+```{r}
+# # remove where median == 0?
+# keep <- character()
+# for (i in seq_along(colnames(data_purish))) {
+#   cname <- colnames(data_purish)[i]
+#   q <- quantile(data_purish[, i][[1]], probs = 0.10)[[1]]
+#   if (q > 0) {
+#     keep <- c(keep, cname)
+#     cat("keep", cname, "\n")
+#   } else {
+#     cat("throw out", cname, "\n")
+#   }
+# }
+# data_purish <- data_purish %>% select(any_of(keep))
 ```
 
 ## High correlations
@@ -355,7 +405,7 @@ data_scaled <- data_pure %>%
 # Check for normality
 
 ```{r}
-mult.norm(data_pureish_striphigh %>% as.data.frame())$mult.test
+mult.norm(data_scaled %>% as.data.frame())$mult.test
 ```
 
 Low (null) p-values show that we can reject the hypothesis that the data would be in a multivariate normal distribution. I.e. the distribution isn't multivariate normal.
@@ -389,12 +439,12 @@ fa.parallel(data_scaled, fm = "pa", fa = "fa", n.iter = 20)
 # Try a different factor score estimation method. warning otherwise
 fa_res <- fa(
   data_scaled,
-  nfactors = 7,
+  nfactors = 6,
   fm = "pa",
   rotate = "promax",
   oblique.scores = TRUE,
   scores = "tenBerge",
-  n.iter = 100
+  n.iter = 20
 )
 fa_res
 ```
@@ -412,11 +462,18 @@ for (i in 1:fa_res$factors) {
 
   load_df_filtered <- load_df %>%
     mutate(abs_l = abs(loading)) %>%
+    mutate(str = case_when(
+      abs_l > 0.7 ~ "***",
+      abs_l <= 0.7 & abs_l > 0.5 ~ "** ",
+      abs_l <= 0.5 & abs_l > 0.3 ~ "*  ",
+      abs_l <= 0.3 & abs_l > 0.1 ~ ".  ",
+      .default = ""
+    )) %>%
     arrange(-abs_l) %>%
-    filter(abs_l > 0.3)
+    filter(abs_l > 0.1)
 
   load_df_filtered %>%
-    round(3) %>%
+    mutate(across(c(loading, abs_l), ~ round(.x, 3))) %>%
     print()
 
   cat("\n")
@@ -425,28 +482,67 @@ for (i in 1:fa_res$factors) {
 
 hypotheses:
 
+- **PA1:** register – narrativity, richness of expression; non-technicality (not sticking to terminology as much etc.?)
+- **PA2:** text length
+- **PA6:** sentence complexity (more clauses)
+  - slightly longer nominal constructions / more objects, more years of education necessary, predicates slightly further in the clause, slightly more verbs
+- **PA3:** unit lengths (sentence length & word length)
+  - slightly more passives, slightly more objects, slightly less verbal overall / slightly longer nom. constructions, slightly morphologically richer, many years of education necessary
+  - more enumerations? but one would expect higher `activity` differences to occur if that was the case
+- **PA5:** passives? (there's probably more to it)
+  - analytic verb forms, because that's what passives are in Czech
+  - smaller activity, because passive participles count as `ADJ` in UD.
+- **PA4:** lexical diversity?
+
+strong correlations:
+
+- **PA1–PA6:** non-technical texts likely more to the point overall, making them shorter
+- ... other ones
+
+hypotheses **ON AN OLD ANALYSIS**:
+
 - **PA1:** written, formal register (complex) vs. more spoken-like register
   - long, severely complex, nominalized sentences / shorter, more verbal sentences
+  - narrativity? (1st and 2nd persons etc.)
 - **PA4:** structure size? elaboratedness of expression? advancement (in years of age)?
   - short words, short sentences, more negations / long words, long sentences, more objects
   - cli: word complexity - sentence easiness
   - the negations might be because of the varying sentence length
+    - FrBo more instructional than CzCDC, meaning less negation (the text tells the reader what to do, not what *not* to do)
 - **PA2:** text length & enumerations
 - **PA3:** intra-text (syntactic, possibly content-related) variation
   - note that the loadings of `VERBfrac.v` and `NEGcount.v` are negligible
   - however, the loading of `entropy.v` is significant
 - **PA5:** negation
 - **PA6:** passive / active
+  - more passives => more tokens in a sentence, but the same no. of verbs (passive participles classified as ADJ in UD)
 - **PA7:** unique words
 
 > **NOTE:** variables with low communalities are excluded from the analysis, yet still likely play a role in legal writing readability. this includes both those selected for the analysis and the excluded ones.
 >
 > **NOTE:** some high-correlating variables were excluded from the FA.
 
-Strong correlations:
+Strong correlations **ON AN OLD ANALYSIS**:
 
 - **PA1–PA3:** possible register switching
 - **PA4–PA5:** expression sophisticatedness
+
+
+### Healthiness diagnostics
+
+```{r}
+fa_res$loadings[] %>%
+  as_tibble() %>%
+  mutate(feat = cnames) %>%
+  select(feat, everything()) %>%
+  pivot_longer(!feat) %>%
+  mutate(value = abs(value)) %>%
+  group_by(feat) %>%
+  summarize(maxload = max(value)) %>%
+  arrange(maxload)
+
+fa_res$communality %>% sort()
+```
 
 ### Uniquenesses
 
@@ -459,10 +555,10 @@ fa_res$uniquenesses %>% round(3)
 ```{r, fig.height=8}
 data_factors <- bind_cols(data_clean, fa_res$scores %>% as.data.frame())
 data_factors_long <- data_factors %>%
-  pivot_longer(PA1:PA7, names_to = "factor", values_to = "factor_score") %>%
+  pivot_longer(PA1:PA4, names_to = "factor", values_to = "factor_score") %>%
   mutate(across(
     factor,
-    ~ factor(.x, levels = c("PA1", "PA4", "PA2", "PA3", "PA5", "PA6", "PA7"))
+    ~ factor(.x, levels = c("PA1", "PA2", "PA6", "PA3", "PA5", "PA4"))
   ))
 
 data_factors_long %>%
@@ -508,7 +604,11 @@ data_factors_long %>%
   facet_grid(factor ~ .) +
   theme(legend.position = "bottom") +
   geom_boxplot()
+```
 
+court decisions often `combined`.
+
+```{r}
 data_factors_long %>%
   ggplot(aes(x = factor_score, y = RecipientIndividuation, color = class)) +
   facet_grid(factor ~ .) +
