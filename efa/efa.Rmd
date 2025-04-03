@@ -10,6 +10,7 @@ library(igraph)
 library(QuantPsyc) # for the multivariate normality test
 library(nFactors) # for the scree plot
 library(psych) # for PA FA
+library(caret) # highly correlated features removal
 library(tidyverse)
 
 library(paletteer) # color palettes
@@ -27,7 +28,7 @@ data <- read_csv("../measurements/measurements.csv")
 
 .firstnonmetacolumn <- 17
 
-data_clean <- data %>%
+data_no_nas <- data %>%
   select(!c(
     fpath,
     # KUK_ID,
@@ -110,7 +111,9 @@ data_clean <- data %>%
     RuleWrongValencyCase = 0,
     RuleWrongVerbonominalCase = 0,
     RuleIncompleteConjunction = 0
-  )) %>%
+  ))
+
+data_clean <- data_no_nas %>%
   # norm data expected to correlate with text length
   mutate(across(c(
     RuleGPcoordovs,
@@ -180,38 +183,6 @@ data_clean <- data %>%
   )) %>%
   # remove further variables belonging to the 'acceptability' category
   select(!c(RuleIncompleteConjunction)) %>%
-  # # remove variation coefficients theoretically coinciding with their means too strongly
-  # select(!c(
-  #   RuleDoubleAdpos.max_allowable_distance.v,
-  #   RuleTooManyNegations.max_negation_frac.v,
-  #   RuleTooManyNegations.max_allowable_negations.v
-  # )) %>%
-  # remove features expected to have low communalities
-  select(!c(
-    RuleDoubleAdpos.max_allowable_distance,
-    RuleDoubleAdpos.max_allowable_distance.v,
-    RuleGPwordorder,
-    RuleLiteraryStyle,
-    maentropy.v,
-    RuleTooManyNegations.max_negation_frac,
-    RulePredSubjDistance.max_distance,
-    RuleTooManyNegations.max_allowable_negations,
-    RuleTooManyNegations.max_allowable_negations.v,
-    RuleTooManyNominalConstructions.max_allowable_nouns.v,
-    RuleTooFewVerbs.min_verb_frac.v,
-    RulePredObjDistance.max_distance.v,
-    RulePredObjDistance.max_distance,
-    # RuleInfVerbDistance.max_distance,
-    RulePredAtClauseBeginning.max_order.v,
-    RuleInfVerbDistance
-    # RulePredSubjDistance
-  )) %>%
-  # remove features expected to have low loadings
-  select(!c(
-    RuleMultiPartVerbs.max_distance.v,
-    RulePredSubjDistance.max_distance.v,
-    RuleLongSentences.max_length
-  )) %>%
   mutate(across(c(class), ~ as.factor(.x)))
 
 # no NAs should be present now
@@ -284,7 +255,31 @@ analyze_correlation <- function(data) {
   )
 }
 
-data_purish <- data_clean %>% select(any_of(selected_features))
+data_purish <- data_clean %>% select(any_of(selected_features)) %>%
+  # remove features expected to have low communalities
+  select(!c(
+    RuleDoubleAdpos.max_allowable_distance,
+    RuleDoubleAdpos.max_allowable_distance.v,
+    RuleGPwordorder,
+    RuleLiteraryStyle,
+    maentropy.v,
+    RuleTooManyNegations.max_negation_frac,
+    RulePredSubjDistance.max_distance,
+    RuleTooManyNegations.max_allowable_negations,
+    RuleTooManyNegations.max_allowable_negations.v,
+    RuleTooManyNominalConstructions.max_allowable_nouns.v,
+    RuleTooFewVerbs.min_verb_frac.v,
+    RulePredObjDistance.max_distance.v,
+    RulePredObjDistance.max_distance,
+    RulePredAtClauseBeginning.max_order.v,
+    RuleInfVerbDistance
+  )) %>%
+  # remove features expected to have low loadings
+  select(!c(
+    RuleMultiPartVerbs.max_distance.v,
+    RulePredSubjDistance.max_distance.v,
+    RuleLongSentences.max_length
+  ))
 ```
 
 ## Extremely non-normal data
@@ -325,9 +320,10 @@ exclude:
 - **atl:** corr. w/ cli around 0.96; unlike cli, atl is not a readability metric
 
 ```{r}
-data_pureish_striphigh <- data_purish %>% select(!c(
-  ari, gf, maentropy, smog, atl
-))
+high_correlations <- findCorrelation(cor(data_purish), verbose = TRUE)
+names(data_purish)[high_correlations]
+
+data_pureish_striphigh <- data_purish %>% select(!all_of(high_correlations))
 
 analyze_correlation(data_pureish_striphigh)$cor_tibble_long %>%
   filter(feat1 != feat2 & abs_cor > .hcorrcutoff) %>%
@@ -399,7 +395,9 @@ plot(
 
 ```{r}
 data_scaled <- data_pure %>%
-  mutate(across(1:length(colnames(data_pure)), ~ scale(.x)[, 1]))
+  mutate(across(seq_along(data_pure), ~ scale(.x)[, 1]))
+
+final_collist <- data_scaled %>% colnames()
 ```
 
 # Check for normality
@@ -439,12 +437,12 @@ fa.parallel(data_scaled, fm = "pa", fa = "fa", n.iter = 20)
 # Try a different factor score estimation method. warning otherwise
 fa_res <- fa(
   data_scaled,
-  nfactors = 6,
+  nfactors = 7,
   fm = "pa",
   rotate = "promax",
   oblique.scores = TRUE,
   scores = "tenBerge",
-  n.iter = 20
+  n.iter = 100
 )
 fa_res
 ```
@@ -482,51 +480,32 @@ for (i in 1:fa_res$factors) {
 
 hypotheses:
 
-- **PA1:** register – narrativity, richness of expression; non-technicality (not sticking to terminology as much etc.?)
-- **PA2:** text length
-- **PA6:** sentence complexity (more clauses)
+- **PA1:** register – narrativity, richness of expression; shorter clauses (-technical / +narrative)
+  - narrativity? (1st and 2nd persons etc.)
+- **PA2:** text length (-short / +long)
+  - hapaxes load negatively, because I normed them over word count
+- **PA6:** sentence complexity (more clauses) (-simple / +complex)
   - slightly longer nominal constructions / more objects, more years of education necessary, predicates slightly further in the clause, slightly more verbs
-- **PA3:** unit lengths (sentence length & word length)
+  - `fkgl` in strong correlation with `sentlen.m`
+- **PA3:** word length (-short / +long)
+  - cli highly correlates with atl, meaning the factor likely expresses mostly token lengths
   - slightly more passives, slightly more objects, slightly less verbal overall / slightly longer nom. constructions, slightly morphologically richer, many years of education necessary
   - more enumerations? but one would expect higher `activity` differences to occur if that was the case
-- **PA5:** passives? (there's probably more to it)
-  - analytic verb forms, because that's what passives are in Czech
+- **PA4:** lexical richness (-poor / +rich)
+- **PA5:** passivity (-active / +passive)
+  - compound verbs, because that's what passives are in Czech
   - smaller activity, because passive participles count as `ADJ` in UD.
-- **PA4:** lexical diversity?
+- **PA7:** compound verbs (-less / +more)
 
 strong correlations:
 
-- **PA1–PA6:** non-technical texts likely more to the point overall, making them shorter
-- ... other ones
-
-hypotheses **ON AN OLD ANALYSIS**:
-
-- **PA1:** written, formal register (complex) vs. more spoken-like register
-  - long, severely complex, nominalized sentences / shorter, more verbal sentences
-  - narrativity? (1st and 2nd persons etc.)
-- **PA4:** structure size? elaboratedness of expression? advancement (in years of age)?
-  - short words, short sentences, more negations / long words, long sentences, more objects
-  - cli: word complexity - sentence easiness
-  - the negations might be because of the varying sentence length
-    - FrBo more instructional than CzCDC, meaning less negation (the text tells the reader what to do, not what *not* to do)
-- **PA2:** text length & enumerations
-- **PA3:** intra-text (syntactic, possibly content-related) variation
-  - note that the loadings of `VERBfrac.v` and `NEGcount.v` are negligible
-  - however, the loading of `entropy.v` is significant
-- **PA5:** negation
-- **PA6:** passive / active
-  - more passives => more tokens in a sentence, but the same no. of verbs (passive participles classified as ADJ in UD)
-- **PA7:** unique words
+- **PA1–PA6:** (-0.38) narrativity leads to simple clauses
+- **PA2–PA6:** (+0.30) longer texts include more complex sentences
+- **PA1–PA5:** (-0.49, topconf = +0.09) narrative texts more active
 
 > **NOTE:** variables with low communalities are excluded from the analysis, yet still likely play a role in legal writing readability. this includes both those selected for the analysis and the excluded ones.
 >
 > **NOTE:** some high-correlating variables were excluded from the FA.
-
-Strong correlations **ON AN OLD ANALYSIS**:
-
-- **PA1–PA3:** possible register switching
-- **PA4–PA5:** expression sophisticatedness
-
 
 ### Healthiness diagnostics
 
@@ -554,11 +533,25 @@ fa_res$uniquenesses %>% round(3)
 
 ```{r, fig.height=8}
 data_factors <- bind_cols(data_clean, fa_res$scores %>% as.data.frame())
+cnames <- map(
+  colnames(data_factors),
+  function(x) {
+    name <- pull(pretty_names %>%
+      filter(name_orig == x), name_pretty)
+    if (length(name) == 1) {
+      return(name)
+    } else {
+      return(x)
+    }
+  }
+) %>% unlist()
+colnames(data_factors) <- cnames
+
 data_factors_long <- data_factors %>%
-  pivot_longer(PA1:PA4, names_to = "factor", values_to = "factor_score") %>%
+  pivot_longer(PA1:PA7, names_to = "factor", values_to = "factor_score") %>%
   mutate(across(
     factor,
-    ~ factor(.x, levels = c("PA1", "PA2", "PA6", "PA3", "PA5", "PA4"))
+    ~ factor(.x, levels = c("PA1", "PA2", "PA6", "PA3", "PA4", "PA5", "PA7"))
   ))
 
 data_factors_long %>%
@@ -571,33 +564,15 @@ data_factors_long %>% ggplot(aes(x = factor_score, y = class)) +
   geom_boxplot() +
   facet_grid(factor ~ .)
 
-data_factors_long %>%
-  ggplot(aes(x = factor_score, y = subcorpus, color = class)) +
-  facet_grid(factor ~ .) +
-  theme(legend.position = "bottom") +
-  geom_jitter(width = 0, height = 0.1, alpha = 0.2)
-
 data_factors_long %>% ggplot(aes(x = factor_score, y = subcorpus)) +
   geom_boxplot() +
   facet_grid(factor ~ .)
-
-data_factors_long %>%
-  ggplot(aes(x = factor_score, y = AuthorType, color = class)) +
-  facet_grid(factor ~ .) +
-  theme(legend.position = "bottom") +
-  geom_jitter(width = 0, height = 0.1, alpha = 0.2)
 
 data_factors_long %>%
   ggplot(aes(x = factor_score, y = AuthorType)) +
   facet_grid(factor ~ .) +
   theme(legend.position = "bottom") +
   geom_boxplot()
-
-data_factors_long %>%
-  ggplot(aes(x = factor_score, y = RecipientType, color = class)) +
-  facet_grid(factor ~ .) +
-  theme(legend.position = "bottom") +
-  geom_jitter(width = 0, height = 0.1, alpha = 0.2)
 
 data_factors_long %>%
   ggplot(aes(x = factor_score, y = RecipientType)) +
@@ -610,22 +585,10 @@ court decisions often `combined`.
 
 ```{r}
 data_factors_long %>%
-  ggplot(aes(x = factor_score, y = RecipientIndividuation, color = class)) +
-  facet_grid(factor ~ .) +
-  theme(legend.position = "bottom") +
-  geom_jitter(width = 0, height = 0.1, alpha = 0.2)
-
-data_factors_long %>%
   ggplot(aes(x = factor_score, y = RecipientIndividuation)) +
   facet_grid(factor ~ .) +
   theme(legend.position = "bottom") +
   geom_boxplot()
-
-data_factors_long %>%
-  ggplot(aes(x = factor_score, y = Objectivity, color = class)) +
-  facet_grid(factor ~ .) +
-  theme(legend.position = "bottom") +
-  geom_jitter(width = 0, height = 0.1, alpha = 0.2)
 
 data_factors_long %>%
   ggplot(aes(x = factor_score, y = Objectivity)) +
@@ -634,14 +597,48 @@ data_factors_long %>%
   geom_boxplot()
 
 data_factors_long %>%
-  ggplot(aes(x = factor_score, y = Bindingness, color = class)) +
-  facet_grid(factor ~ .) +
-  theme(legend.position = "bottom") +
-  geom_jitter(width = 0, height = 0.1, alpha = 0.2)
-
-data_factors_long %>%
   ggplot(aes(x = factor_score, y = Bindingness)) +
   facet_grid(factor ~ .) +
   theme(legend.position = "bottom") +
   geom_boxplot()
+```
+
+# Feature-factor correlations
+
+```{r}
+data_factors_longer <- data_factors_long %>%
+  pivot_longer(
+    abstractNOUNs:verbdist,
+    names_to = "feat", values_to = "feat_value"
+  )
+
+data_factors_correlations <- data_factors_longer %>%
+  group_by(feat, factor) %>%
+  summarize(correlation = cor(feat_value, factor_score))
+
+data_factors_correlations %>%
+  filter(feat %in% final_collist) %>%
+  ggplot(aes(
+    x = factor,
+    y = feat,
+    fill = correlation,
+    label = round(correlation, 2)
+  )) +
+  geom_tile() +
+  geom_text() +
+  scale_fill_gradient2()
+```
+
+```{r fig.height=9}
+data_factors_correlations %>%
+  filter(!(feat %in% final_collist)) %>%
+  ggplot(aes(
+    x = factor,
+    y = feat,
+    fill = correlation,
+    label = round(correlation, 2)
+  )) +
+  geom_tile() +
+  geom_text() +
+  scale_fill_gradient2()
 ```
