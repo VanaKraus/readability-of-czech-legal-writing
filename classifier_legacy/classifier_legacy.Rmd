@@ -1,5 +1,5 @@
 ---
-title: Classifier(s)
+title: Classifier(s) (legacy)
 output: pdf_document
 ---
 
