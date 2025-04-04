@@ -219,7 +219,10 @@ for (i in .firstnonmetacolumn:ncol(data_clean)) {
 feature_importances
 
 selected_features <- feature_importances %>%
-  filter(p_value <= 0.05) %>%
+  mutate(selected = p_value <= 0.05)
+selected_features %>% write_csv("selected_features.csv")
+selected_features_names <- selected_features %>%
+  filter(selected) %>%
   pull(feat_name)
 ```
 
@@ -255,7 +258,7 @@ analyze_correlation <- function(data) {
   )
 }
 
-data_purish <- data_clean %>% select(any_of(selected_features)) %>%
+data_purish <- data_clean %>% select(any_of(selected_features_names)) %>%
   # remove features expected to have low communalities
   select(!c(
     RuleDoubleAdpos.max_allowable_distance,
