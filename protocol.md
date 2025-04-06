@@ -28,3 +28,7 @@ Documents parsed on 2025-03-08 using `czech-pdt-ud-2.15-241121`.
 # EFA
 
 1. run `efa/efa.Rmd`
+
+# RFs
+
+1. run `classifier/classifier.Rmd`

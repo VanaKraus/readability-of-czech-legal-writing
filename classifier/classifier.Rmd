@@ -1,9 +1,9 @@
 ---
-title: Classifier(s) (legacy)
+title: Classifiers
 output: pdf_document
 ---
 
-```{r}
+```{r init}
 set.seed(42)
 
 library(caret)
@@ -14,7 +14,7 @@ library(tidymodels)
 
 # Load and tidy data
 
-```{r}
+```{r load-and-tidy}
 pretty_names <- read_csv("../feat_name_mapping.csv")
 data <- read_csv("../measurements/measurements.csv")
 
@@ -178,14 +178,36 @@ data_clean <- data_no_nas %>%
 
 # no NAs should be present now
 data_clean[!complete.cases(data_clean), ]
+
+.firstnonmetacolumn <- 18
+
+prettify_feat_name <- function(x) {
+  name <- pull(pretty_names %>%
+    filter(name_orig == x), name_pretty)
+  if (length(name) == 1) {
+    return(name)
+  } else {
+    return(x)
+  }
+}
+
+prettify_feat_name_vector <- function(x) {
+  map(
+    x,
+    prettify_feat_name
+  ) %>% unlist()
+}
+
+colnames(data_clean) <- prettify_feat_name_vector(colnames(data_clean))
 ```
 
 # Filter for features identified as important
 
 This may not be necessary, as the identification was crucial to the EFA above all, so that features irrelevant for readability would not appear in the model. It may be useful to compare the importances of a model trained on all features and on a selected-feature model.
 
-```{r}
-selected_features_tibble <- read_csv("../efa/selected_features.csv")
+```{r filter-important-features}
+selected_features_tibble <- read_csv("../efa/selected_features.csv") %>%
+  mutate(across(feat_name, prettify_feat_name_vector))
 
 formula_all <- reformulate(
   selected_features_tibble %>% pull(feat_name), "class"
@@ -197,7 +219,7 @@ formula_selected <- reformulate(
 
 # Split and folds
 
-```{r}
+```{r split-and-folds}
 .split_prop <- 4 / 5
 .no_folds <- 10
 
@@ -222,7 +244,7 @@ testing_set %>%
 
 To familiarize myself with the library and CRFs.
 
-```{r}
+```{r experimental}
 training_split <- training_set %>%
   initial_split(prop = .split_prop, strata = strata)
 train_subset <- training(training_split)
@@ -234,16 +256,21 @@ model_rf_exp <- cforest(
 )
 
 predictions_exp <- predict(model_rf_exp, newdata = devtest_subset)
-confusionMatrix(predictions_exp, devtest_subset$class, positive = "good")
+confusionMatrix(
+  predictions_exp, devtest_subset$class,
+  positive = "good", mode = "everything"
+)
 
-importances_exp <- varimp(model_rf_exp)
 # computationally expensive
+# importances_exp <- varimp(model_rf_exp)
+
+# even more computationally expensive
 # cimportances_exp <- varimp(model_rf_exp, conditional = TRUE)
 ```
 
 # MFV model
 
-```{r}
+```{r mfv}
 (nrow(data_clean %>% filter(class == "bad")) / nrow(data_clean)) %>%
   round(3)
 (nrow(training_set %>% filter(class == "bad")) / nrow(training_set)) %>%
@@ -254,7 +281,7 @@ importances_exp <- varimp(model_rf_exp)
 
 # Helpers
 
-```{r}
+```{r helpers}
 ntree_tune_levels <- 500 + 0:8 * 250
 
 tune_crf <- function(formula, folds, ntree_tune_levels) {
@@ -289,13 +316,78 @@ tune_crf <- function(formula, folds, ntree_tune_levels) {
     accuracy = accuracy_column
   )
 }
+
+get_mismatch_details <- function(data_with_predictions) {
+  print(
+    data_with_predictions %>%
+      ggplot(aes(x = .prob, y = class, color = subcorpus)) +
+      geom_jitter(height = 0.2, width = 0)
+  )
+
+  cat("Confusion matrices by subcorpora:\n")
+  data_with_predictions %>%
+    select(.pred, class, subcorpus) %>%
+    table() %>%
+    print()
+
+  cat("\n")
+
+  deviations <- data_with_predictions %>%
+    filter(.pred != class) %>%
+    mutate(abs_dev = abs(.prob - 0.5)) %>%
+    arrange(-abs_dev)
+
+  cat("Greatest deviations:\n")
+  deviations %>%
+    select(abs_dev, .prob, class, subcorpus, FileName) %>%
+    mutate(across(c(.prob, abs_dev), ~ round(.x, 3))) %>%
+    print(n = round(nrow(data_with_predictions) / 5))
+
+  cat("Names of highest-deviating documents:\n")
+  highest_deviation_names <- deviations %>%
+    filter(abs_dev >= 0.25) %>%
+    arrange(-abs_dev) %>%
+    pull(FileName)
+
+  print(highest_deviation_names)
+
+  return(list(
+    deviations = deviations, highest_deviations = highest_deviation_names
+  ))
+}
+
+plot_outlier <- function(doc_name, variable_importances, dataset) {
+  important_variables <- sort(variable_importances) %>% tail(n = 9)
+  varnames <- names(important_variables)
+
+  dmut <- dataset %>%
+    select(KUK_ID, FileName, class, all_of(varnames)) %>%
+    mutate(across(all_of(varnames), ~ scale(.x))) %>%
+    pivot_longer(
+      all_of(varnames),
+      names_to = "feature", values_to = "value"
+    ) %>%
+    mutate(across(value, ~ .x[, 1]))
+
+  cat(nrow(dmut %>% filter(value > 5)), "observation(s) removed from the plot\n")
+  dmutf <- dmut %>% filter(value <= 5)
+
+  dmutf %>%
+    ggplot(aes(x = class, y = value)) +
+    facet_wrap(~feature) +
+    geom_boxplot() +
+    geom_point(
+      data = dmut %>% filter(FileName == doc_name), color = "red", size = 5
+    ) +
+    labs(y = "measurements (scaled)")
+}
 ```
 
 # Selected-features model
 
 ## Tune
 
-```{r}
+```{r sel-tune}
 tune_df_sel <- tune_crf(formula_selected, folds, ntree_tune_levels)
 
 tune_df_sel %>%
@@ -315,7 +407,7 @@ best_ntree_sel <- tune_df_sel %>%
 
 ## Fit
 
-```{r}
+```{r sel-fit}
 model_crf_sel <- cforest(
   formula_selected, training_set,
   controls = cforest_control(ntree = best_ntree_sel)
@@ -331,27 +423,39 @@ predictions_sel_prob <- predict(
 predictions_sel <- if_else(predictions_sel_prob > 0.5, "good", "bad") %>%
   as.factor()
 
-confusionMatrix(predictions_sel, testing_set$class, positive = "good")
+confusionMatrix(
+  predictions_sel, testing_set$class,
+  positive = "good", mode = "everything"
+)
+cimportances_sel <- varimp(model_crf_sel, conditional = TRUE, nperm = 20)
+cimportances_sel %>%
+  sort() %>%
+  as.data.frame() %>%
+  print(digits = 3)
+cimportances_sel %>%
+  abs() %>%
+  sort(decreasing = TRUE) %>%
+  as.data.frame() %>%
+  print(digits = 3)
 
 testing_set_sel <- testing_set %>%
   mutate(.prob = predictions_sel_prob, .pred = predictions_sel)
-testing_set_sel %>% ggplot(aes(x = .prob, y = class, color = subcorpus)) +
-  geom_jitter(width = 0, height = 0.1)
+```
 
-testing_set_sel %>%
-  mutate(abs_dev = abs(0.5 - .prob)) %>%
-  filter(class != .pred & abs_dev > 0.25) %>%
-  arrange(-abs_dev) %>%
-  select(subcorpus, FileName, class, .prob, abs_dev) %>%
-  mutate(across(c(.prob, abs_dev), ~ round(.x, 3))) %>%
-  as.data.frame()
+```{r sel-mismatches, fig.height=8}
+mismatches_sel <- get_mismatch_details(testing_set_sel)
+
+for (dev in mismatches_sel$highest_deviations) {
+  print(plot_outlier(dev, cimportances_sel, testing_set_sel) +
+    labs(title = "Top 9 most important feature values", subtitle = dev))
+}
 ```
 
 # All-features model
 
 ## Tune
 
-```{r}
+```{r all-tune}
 tune_df_all <- tune_crf(formula_all, folds, ntree_tune_levels)
 
 tune_df_all %>%
@@ -371,7 +475,7 @@ best_ntree_all <- tune_df_all %>%
 
 ## Fit
 
-```{r}
+```{r all-fit}
 model_crf_all <- cforest(
   formula_all, training_set,
   controls = cforest_control(ntree = best_ntree_all)
@@ -387,19 +491,101 @@ predictions_all_prob <- predict(
 predictions_all <- if_else(predictions_all_prob > 0.5, "good", "bad") %>%
   as.factor()
 
-confusionMatrix(predictions_all, testing_set$class, positive = "good")
+confusionMatrix(
+  predictions_all, testing_set$class,
+  positive = "good", mode = "everything"
+)
+cimportances_all <- varimp(model_crf_all, conditional = TRUE, nperm = 20)
+cimportances_all %>%
+  sort() %>%
+  as.data.frame() %>%
+  print(digits = 3)
+cimportances_all %>%
+  abs() %>%
+  sort(decreasing = TRUE) %>%
+  as.data.frame() %>%
+  print(digits = 3)
 
 testing_set_all <- testing_set %>%
   mutate(.prob = predictions_all_prob, .pred = predictions_all)
-testing_set_all %>% ggplot(aes(x = .prob, y = class, color = subcorpus)) +
-  geom_jitter(width = 0, height = 0.1)
-
-testing_set_all %>%
-  mutate(abs_dev = abs(0.5 - .prob)) %>%
-  filter(class != .pred & abs_dev > 0.25) %>%
-  arrange(-abs_dev) %>%
-  select(subcorpus, FileName, class, .prob, abs_dev) %>%
-  mutate(across(c(.prob, abs_dev), ~ round(.x, 3))) %>%
-  as.data.frame()
 ```
 
+```{r all-mismatches, fig.height=8}
+mismatches_all <- get_mismatch_details(testing_set_all)
+
+mismatches_all <- get_mismatch_details(testing_set_all)
+for (dev in mismatches_all$highest_deviations) {
+  print(plot_outlier(dev, cimportances_all, testing_set_all) +
+    labs(title = "Top 9 most important feature values", subtitle = dev))
+}
+```
+
+# Variable importance comparison
+
+```{r}
+glm_feature_importances <- tibble(
+  feat_name = character(), p_value_glm = numeric()
+)
+
+for (i in .firstnonmetacolumn:ncol(data_clean)) {
+  fname <- names(data_clean)[i]
+
+  formula_single <- reformulate(fname, "class")
+
+  glm_model <- glm(formula_single, data_clean, family = "binomial")
+  glm_coefficients <- summary(glm_model)$coefficients
+  row_index <- which(rownames(glm_coefficients) == fname)
+  p_value <- glm_coefficients[row_index, 4]
+
+  glm_feature_importances <- glm_feature_importances %>%
+    add_row(feat_name = fname, p_value_glm = p_value)
+}
+glm_feature_importances
+
+feature_importances <- glm_feature_importances %>%
+  full_join(
+    data.frame(
+      feat_name = names(cimportances_all) %>% prettify_feat_name_vector(),
+      imp_crf_all = as.vector(cimportances_all)
+    ),
+    by = "feat_name"
+  ) %>%
+  full_join(
+    data.frame(
+      feat_name = names(cimportances_sel) %>% prettify_feat_name_vector(),
+      imp_crf_sel = as.vector(cimportances_sel)
+    ),
+    by = "feat_name"
+  ) %>%
+  mutate(imp_crf_all_abs = abs(imp_crf_all), imp_crf_sel_abs = abs(imp_crf_sel))
+
+feature_importances %>%
+  select(feat_name, p_value_glm, imp_crf_all_abs, imp_crf_sel_abs) %>%
+  arrange(p_value_glm) %>%
+  as.data.frame() %>%
+  print(digits = 3)
+
+feature_importances %>%
+  select(feat_name, imp_crf_all, imp_crf_sel) %>%
+  arrange(imp_crf_all) %>%
+  as.data.frame() %>%
+  print(digits = 3)
+
+feature_importances %>%
+  ggplot(aes(
+    x = p_value_glm, y = imp_crf_all_abs, color = is.na(imp_crf_sel)
+  )) +
+  geom_point() +
+  scale_x_log10() +
+  scale_y_log10()
+
+feature_importances %>%
+  ggplot(aes(x = p_value_glm, y = imp_crf_sel_abs)) +
+  geom_point() +
+  scale_x_log10() +
+  scale_y_log10()
+
+feature_importances %>%
+  ggplot(aes(x = imp_crf_all, y = imp_crf_sel)) +
+  geom_point()
+```

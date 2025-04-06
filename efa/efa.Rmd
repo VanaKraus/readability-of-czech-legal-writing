@@ -8,6 +8,7 @@ set.seed(42)
 
 library(igraph)
 library(QuantPsyc) # for the multivariate normality test
+library(dunn.test)
 library(nFactors) # for the scree plot
 library(psych) # for PA FA
 library(caret) # highly correlated features removal
@@ -183,7 +184,18 @@ data_clean <- data_no_nas %>%
   )) %>%
   # remove further variables belonging to the 'acceptability' category
   select(!c(RuleIncompleteConjunction)) %>%
-  mutate(across(c(class), ~ as.factor(.x)))
+  mutate(across(c(
+    class,
+    FileFormat,
+    subcorpus,
+    DocumentVersion,
+    LegalActType,
+    Objectivity,
+    AuthorType,
+    RecipientType,
+    RecipientIndividuation,
+    Anonymized
+  ), ~ as.factor(.x)))
 
 # no NAs should be present now
 data_clean[!complete.cases(data_clean), ]
@@ -196,9 +208,6 @@ data_clean_scaled <- data_clean %>%
 # Important features identification
 
 ```{r}
-data_clean_good <- data_clean_scaled %>% filter(class == "good")
-data_clean_bad <- data_clean_scaled %>% filter(class == "bad")
-
 feature_importances <- tibble(
   feat_name = character(), p_value = numeric()
 )
@@ -532,9 +541,47 @@ fa_res$communality %>% sort()
 fa_res$uniquenesses %>% round(3)
 ```
 
-## Plots
+## Distributions over factors
 
 ```{r, fig.height=8}
+analyze_distributions <- function(data_factors_long, variable) {
+  plot <- data_factors_long %>%
+    ggplot(aes(x = factor_score, y = !!sym(variable))) +
+    geom_boxplot() +
+    facet_grid(factor ~ .)
+  print(plot)
+
+  formula <- reformulate(variable, "factor_score")
+  factors <- levels(data_factors_long$factor)
+
+  min_p_values <- numeric()
+  for (f in factors) {
+    data <- data_factors_long %>% filter(factor == f)
+
+    cat(
+      "\nTest for the significance of differences in",
+      variable, "over", f, ":\n\n"
+    )
+
+    dunn <- dunn.test(
+      data$factor_score, data[[variable]],
+      altp = TRUE, method = "bonferroni"
+    )
+    min_p_values <- c(min_p_values, min(dunn$altP.adjusted))
+  }
+
+  cat(
+    "\np < 5e-2\tfound in:",
+    factors[min_p_values < 0.05],
+    "\np < 1e-2\tfound in:",
+    factors[min_p_values < 0.01],
+    "\np < 1e-3\tfound in:",
+    factors[min_p_values < 0.001],
+    "\np < 1e-4\tfound in:",
+    factors[min_p_values < 0.0001], "\n"
+  )
+}
+
 data_factors <- bind_cols(data_clean, fa_res$scores %>% as.data.frame())
 cnames <- map(
   colnames(data_factors),
@@ -562,48 +609,58 @@ data_factors_long %>%
   facet_grid(factor ~ .) +
   theme(legend.position = "bottom") +
   geom_jitter(width = 0, height = 0.1, alpha = 0.2)
-
-data_factors_long %>% ggplot(aes(x = factor_score, y = class)) +
-  geom_boxplot() +
-  facet_grid(factor ~ .)
-
-data_factors_long %>% ggplot(aes(x = factor_score, y = subcorpus)) +
-  geom_boxplot() +
-  facet_grid(factor ~ .)
-
-data_factors_long %>%
-  ggplot(aes(x = factor_score, y = AuthorType)) +
-  facet_grid(factor ~ .) +
-  theme(legend.position = "bottom") +
-  geom_boxplot()
-
-data_factors_long %>%
-  ggplot(aes(x = factor_score, y = RecipientType)) +
-  facet_grid(factor ~ .) +
-  theme(legend.position = "bottom") +
-  geom_boxplot()
 ```
 
-court decisions often `combined`.
+### class
 
 ```{r}
-data_factors_long %>%
-  ggplot(aes(x = factor_score, y = RecipientIndividuation)) +
-  facet_grid(factor ~ .) +
-  theme(legend.position = "bottom") +
-  geom_boxplot()
+analyze_distributions(data_factors_long, "class")
+```
 
-data_factors_long %>%
-  ggplot(aes(x = factor_score, y = Objectivity)) +
-  facet_grid(factor ~ .) +
-  theme(legend.position = "bottom") +
-  geom_boxplot()
+### subcorpus
 
-data_factors_long %>%
-  ggplot(aes(x = factor_score, y = Bindingness)) +
-  facet_grid(factor ~ .) +
-  theme(legend.position = "bottom") +
-  geom_boxplot()
+```{r}
+analyze_distributions(data_factors_long, "subcorpus")
+```
+
+### subcorpus wo/ LiFRLaw
+
+```{r}
+analyze_distributions(
+  data_factors_long %>% filter(subcorpus != "LiFRLaw"), "subcorpus"
+)
+```
+
+### AuthorType
+
+```{r}
+analyze_distributions(data_factors_long, "AuthorType")
+```
+
+### RecipientType
+
+```{r}
+analyze_distributions(data_factors_long, "RecipientType")
+```
+
+court decisions often with `RecipientType = combined`.
+
+### RecipientIndividuation
+
+```{r}
+analyze_distributions(data_factors_long, "RecipientIndividuation")
+```
+
+### Objectivity
+
+```{r}
+analyze_distributions(data_factors_long, "Objectivity")
+```
+
+### Bindingness
+
+```{r}
+analyze_distributions(data_factors_long, "Bindingness")
 ```
 
 # Feature-factor correlations
