@@ -104,6 +104,12 @@ Quick peek into other parts of the data set:
 | ESO            | 7.000          | 40.000          |
 | FrBo/articles  | 4.000          | 15.000
 
+## Properties of FrBo
+
+```{r}
+table(frbo$FolderPath, frbo$Readability, useNA = "ifany")
+```
+
 # Filter out duplicates
 
 Some subcorpora overlap (*FrBo* with *ESO*, and multiple subcorpora with *KUKY*).
@@ -154,7 +160,10 @@ df_frbo_dup_wide <- df_frbo_duplicates %>%
     class_FrBo = as.factor(if_else(Readability_FrBo == "high", "good", "bad"))
   )
 
-table(df_frbo_dup_wide$Readability_KUKY, df_frbo_dup_wide$Readability_FrBo)
+table(
+  df_frbo_dup_wide$Readability_KUKY, df_frbo_dup_wide$Readability_FrBo,
+  useNA = "ifany"
+)
 
 readability_agreement <- df_frbo_dup_wide %>%
   select(class_KUKY, class_FrBo) %>%

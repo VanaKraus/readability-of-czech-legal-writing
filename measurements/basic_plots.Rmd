@@ -10,6 +10,10 @@ library(tidyverse)
 
 df <- read_csv("measurements.csv")
 
+df %>%
+  select(subcorpus, class) %>%
+  table()
+
 df %>% ggplot(aes(x = class, y = activity)) +
   geom_boxplot()
 df %>% ggplot(aes(x = class, y = ari)) +
