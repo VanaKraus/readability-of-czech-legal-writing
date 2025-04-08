@@ -49,8 +49,8 @@ RuleInfVerbDistance,xcomp
 RuleInfVerbDistance.max_distance,xcompdist.m
 RuleInfVerbDistance.max_distance.v,xcompdist.v
 RuleMultiPartVerbs,compoundVERBs
-RuleMultiPartVerbs.max_distance,analyticVERBsdist.m
-RuleMultiPartVerbs.max_distance.v,analyticVERBsdist.v
+RuleMultiPartVerbs.max_distance,compoundVERBsdist.m
+RuleMultiPartVerbs.max_distance.v,compoundVERBsdist.v
 RuleLongSentences,longsents
 RuleLongSentences.max_length,sentlen.m
 RuleLongSentences.max_length.v,sentlen.v
