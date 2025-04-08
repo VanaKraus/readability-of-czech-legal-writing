@@ -7,6 +7,8 @@ output: pdf_document
 set.seed(42)
 
 library(igraph)
+library(moments) # for skewness()
+library(robustbase)
 library(QuantPsyc) # for the multivariate normality test
 library(dunn.test)
 library(nFactors) # for the scree plot
@@ -25,6 +27,24 @@ conflict_prefer("filter", "dplyr")
 
 ```{r}
 pretty_names <- read_csv("../feat_name_mapping.csv")
+
+prettify_feat_name <- function(x) {
+  name <- pull(pretty_names %>%
+    filter(name_orig == x), name_pretty)
+  if (length(name) == 1) {
+    return(name)
+  } else {
+    return(x)
+  }
+}
+
+prettify_feat_name_vector <- function(x) {
+  map(
+    x,
+    prettify_feat_name
+  ) %>% unlist()
+}
+
 data <- read_csv("../measurements/measurements.csv")
 
 .firstnonmetacolumn <- 17
@@ -113,8 +133,18 @@ data_no_nas <- data %>%
     RuleWrongVerbonominalCase = 0,
     RuleIncompleteConjunction = 0
   ))
+```
 
-data_clean <- data_no_nas %>%
+## Outliers
+
+```{r}
+data_no_out <- data_no_nas %>% filter(KUK_ID != "CzCDC_SupC088540")
+```
+
+## Normalization
+
+```{r}
+data_clean <- data_no_out %>%
   # norm data expected to correlate with text length
   mutate(across(c(
     RuleGPcoordovs,
@@ -231,6 +261,57 @@ selected_features %>% write_csv("selected_features.csv")
 selected_features_names <- selected_features %>%
   filter(selected) %>%
   pull(feat_name)
+
+data_purish <- data_clean %>% select(any_of(selected_features_names))
+colnames(data_purish) <- prettify_feat_name_vector(colnames(data_purish))
+```
+
+# Skewness
+
+```{r}
+.absskewnesscutoff <- 5
+.absmedcouplecutoff <- 0.5
+
+medc <- numeric()
+sk <- numeric()
+for (i in seq_along(colnames(data_purish))) {
+  d <- as.vector(data_purish[i])[[1]]
+  medc <- c(medc, mc(d, doScale = TRUE))
+  sk <- c(sk, skewness(d))
+}
+
+data_skewness <- data.frame(
+  feat = colnames(data_purish), medcouple = medc, skewness = sk
+)
+
+data_skewness %>%
+  ggplot(aes(x = medcouple, y = feat, label = medcouple %>% round(3))) +
+  geom_col() +
+  geom_label()
+
+data_skewness %>%
+  ggplot(aes(x = skewness, y = feat, label = skewness %>% round(3))) +
+  geom_col() +
+  geom_label()
+
+data_skewness %>%
+  ggplot(aes(
+    x = skewness, y = medcouple, label = feat,
+    color = abs(skewness) < .absskewnesscutoff &
+      abs(medcouple) < .absmedcouplecutoff
+  )) +
+  geom_text() +
+  theme(legend.position = "bottom")
+
+acceptably_skewed <- data_skewness %>%
+  filter(abs(skewness) < .absskewnesscutoff &
+    abs(medcouple) < .absmedcouplecutoff) %>%
+  pull(feat)
+acceptably_skewed
+
+data_unskewed <- data_purish %>% select(any_of(acceptably_skewed))
+
+# pairs.panels(data_unskewed, lm = TRUE)
 ```
 
 # Correlations
@@ -265,31 +346,32 @@ analyze_correlation <- function(data) {
   )
 }
 
-data_purish <- data_clean %>% select(any_of(selected_features_names)) %>%
-  # remove features expected to have low communalities
-  select(!c(
-    RuleDoubleAdpos.max_allowable_distance,
-    RuleDoubleAdpos.max_allowable_distance.v,
-    RuleGPwordorder,
-    RuleLiteraryStyle,
-    maentropy.v,
-    RuleTooManyNegations.max_negation_frac,
-    RulePredSubjDistance.max_distance,
-    RuleTooManyNegations.max_allowable_negations,
-    RuleTooManyNegations.max_allowable_negations.v,
-    RuleTooManyNominalConstructions.max_allowable_nouns.v,
-    RuleTooFewVerbs.min_verb_frac.v,
-    RulePredObjDistance.max_distance.v,
-    RulePredObjDistance.max_distance,
-    RulePredAtClauseBeginning.max_order.v,
-    RuleInfVerbDistance
-  )) %>%
-  # remove features expected to have low loadings
-  select(!c(
-    RuleMultiPartVerbs.max_distance.v,
-    RulePredSubjDistance.max_distance.v,
-    RuleLongSentences.max_length
-  ))
+
+# data_purish <- data_clean %>% select(any_of(selected_features_names)) %>%
+#   # remove features expected to have low communalities
+#   select(!c(
+#     RuleDoubleAdpos.max_allowable_distance,
+#     RuleDoubleAdpos.max_allowable_distance.v,
+#     RuleGPwordorder,
+#     RuleLiteraryStyle,
+#     maentropy.v,
+#     RuleTooManyNegations.max_negation_frac,
+#     RulePredSubjDistance.max_distance,
+#     RuleTooManyNegations.max_allowable_negations,
+#     RuleTooManyNegations.max_allowable_negations.v,
+#     RuleTooManyNominalConstructions.max_allowable_nouns.v,
+#     RuleTooFewVerbs.min_verb_frac.v,
+#     RulePredObjDistance.max_distance.v,
+#     RulePredObjDistance.max_distance,
+#     RulePredAtClauseBeginning.max_order.v,
+#     RuleInfVerbDistance
+#   )) %>%
+#   # remove features expected to have low loadings
+#   select(!c(
+#     RuleMultiPartVerbs.max_distance.v,
+#     RulePredSubjDistance.max_distance.v,
+#     RuleLongSentences.max_length
+#   ))
 ```
 
 ## Extremely non-normal data
@@ -313,7 +395,10 @@ data_purish <- data_clean %>% select(any_of(selected_features_names)) %>%
 ## High correlations
 
 ```{r}
-.hcorrcutoff <- 0.9
+.hcorrcutoff <- 0.7
+
+library(corrplot)
+corrplot(cor(data_unskewed), method = "color", tl.cex = 0.6)
 
 analyze_correlation(data_purish)$cor_tibble_long %>%
   filter(feat1 != feat2 & abs_cor > .hcorrcutoff) %>%
@@ -330,7 +415,10 @@ exclude:
 - **atl:** corr. w/ cli around 0.96; unlike cli, atl is not a readability metric
 
 ```{r}
-high_correlations <- findCorrelation(cor(data_purish), verbose = TRUE)
+high_correlations <- findCorrelation(
+  cor(data_purish),
+  verbose = TRUE, cutoff = .hcorrcutoff
+)
 names(data_purish)[high_correlations]
 
 data_pureish_striphigh <- data_purish %>% select(!all_of(high_correlations))
@@ -344,8 +432,7 @@ analyze_correlation(data_pureish_striphigh)$cor_tibble_long %>%
 ## Low correlations
 
 ```{r}
-# 0.35 instead of 0.3 otherwise the FA bootstrapping would freeze
-.lcorrcutoff <- 0.35
+.lcorrcutoff <- 0.4
 
 low_correlating_features <- analyze_correlation(data_pureish_striphigh)$
   cor_tibble_long %>%
@@ -360,24 +447,93 @@ feature_importances %>% filter(feat_name %in% low_correlating_features)
 data_pure <- data_pureish_striphigh %>%
   select(!any_of(low_correlating_features))
 
-cnames <- map(
-  colnames(data_pure),
-  function(x) {
-    pull(pretty_names %>%
-      filter(name_orig == x), name_pretty)
-  }
-) %>% unlist()
+colnames(data_pure) <- prettify_feat_name_vector(colnames(data_pure))
 
-colnames(data_pure) <- cnames
+corrplot(cor(data_pure), method = "color", tl.cex = 0.6)
+corrplot(cor(data_pure) %>% abs(), method = "color", tl.cex = 0.6)
 ```
 
-## Visualisation
+# Verbalness FA
+
+```{r}
+# data_verbalness <- data_pure %>%
+#   select(VERBfrac.m, NOUNcount.m, activity, verbdist) %>%
+#   # mutate(neg.NOUNcount.m = -NOUNcount.m, neg.verbdist = -verbdist) %>%
+#   # select(!c(NOUNcount.m, verbdist)) %>%
+#   mutate(across(VERBfrac.m:verbdist, ~ scale(.x)[, 1]))
+
+# corrplot(cor(data_verbalness), method = "color", tl.cex = 0.6)
+
+# data_verbalness %>%
+#   cor() %>%
+#   det()
+# KMO(data_verbalness)
+
+# mult.norm(data_verbalness %>% as.data.frame())$mult.test
+
+# fa.parallel(data_verbalness, fm = "pa", fa = "fa", n.iter = 20)
+
+# fa_verbalness <- fa(
+#   data_verbalness,
+#   nfactors = 2,
+#   fm = "pa",
+#   rotate = "promax",
+#   oblique.scores = TRUE,
+#   scores = "tenBerge",
+#   n.iter = 100
+# )
+# fa_verbalness
+
+# data_verbalness_parcels <- data_verbalness %>%
+#   rowid_to_column("ID") %>%
+#   pivot_longer(!ID, names_to = "name", values_to = "value") %>%
+#   group_by(ID) %>%
+#   summarize(
+#     verbalness = weighted.mean(value, fa_verbalness$loadings[, "PA1"]),
+#     nominalness = weighted.mean(value, fa_verbalness$loadings[, "PA2"])
+#   ) %>%
+#   ungroup() %>%
+#   select(!ID)
+
+# data_pure <- data_pure %>%
+#   bind_cols(data_verbalness_parcels) %>%
+#   select(!c(VERBfrac.m, NOUNcount.m, activity, verbdist))
+```
+
+# Correlation matrix determinant
+
+determinants > 0.00001 = 1e-5 generally indicate multicollinearity is probably not a problem (Watkins 2021: 61).
+
+```{r}
+data_pure %>%
+  cor() %>%
+  det() %>%
+  print(digits = 5)
+```
+
+# Bartlett's test of sphericity
+
+null hypothesis: the correlation matrix is an identity matrix, i.e. random. sensitive to sample size, should be considered a minimal standard (Watkins 2021: 61).
+
+```{r}
+cortest.bartlett(data_pure)
+```
+
+# Kaiser-Meyer-Olkin measure of sampling adequacy
+
+there are debates about which values KMO values are acceptable. Kaiser (1974) suggested that KMO < .50 are unacceptable but other measurement specialists recomment a minimum value of .60 for acceptability with values >= .70 preferred (Watkins 2021: 61).
+
+```{r}
+KMO(data_pure)
+```
+
+# Visualisation
 
 ```{r fig.width=12, fig.height=12, fig.align='center'}
 my_colors <- paletteer::paletteer_d("ggthemes::Classic_10_Medium")
 
 network_edges <- analyze_correlation(data_pure)$cor_tibble_long_upper %>%
-  filter(abs_cor > 0.3)
+  filter(abs_cor > .lcorrcutoff)
 
 network <- graph_from_data_frame(
   network_edges,
@@ -522,7 +678,7 @@ strong correlations:
 ```{r}
 fa_res$loadings[] %>%
   as_tibble() %>%
-  mutate(feat = cnames) %>%
+  mutate(feat = colnames(data_scaled)) %>%
   select(feat, everything()) %>%
   pivot_longer(!feat) %>%
   mutate(value = abs(value)) %>%
@@ -580,29 +736,29 @@ analyze_distributions <- function(data_factors_long, variable) {
   )
 }
 
-data_factors <- bind_cols(data_clean, fa_res$scores %>% as.data.frame())
-cnames <- map(
-  colnames(data_factors),
-  function(x) {
-    name <- pull(pretty_names %>%
-      filter(name_orig == x), name_pretty)
-    if (length(name) == 1) {
-      return(name)
-    } else {
-      return(x)
-    }
-  }
-) %>% unlist()
-colnames(data_factors) <- cnames
+data_factors <- bind_cols(data_pure, fa_res$scores %>% as.data.frame())
+colnames(data_factors) <- prettify_feat_name_vector(colnames(data_factors))
+
+data_factors_noout <- bind_cols(data_no_out, fa_res$scores %>% as.data.frame())
+colnames(data_factors_noout) <- prettify_feat_name_vector(
+  colnames(data_factors_noout)
+)
 
 data_factors_long <- data_factors %>%
-  pivot_longer(PA1:PA7, names_to = "factor", values_to = "factor_score") %>%
+  pivot_longer(PA1:PA4, names_to = "factor", values_to = "factor_score") %>%
   mutate(across(
     factor,
     ~ factor(.x, levels = c("PA1", "PA2", "PA6", "PA3", "PA4", "PA5", "PA7"))
   ))
 
-data_factors_long %>%
+data_factors_noout_long <- data_factors_noout %>%
+  pivot_longer(PA1:PA4, names_to = "factor", values_to = "factor_score") %>%
+  mutate(across(
+    factor,
+    ~ factor(.x, levels = c("PA1", "PA2", "PA6", "PA3", "PA4", "PA5", "PA7"))
+  ))
+
+data_factors_noout_long %>%
   ggplot(aes(x = factor_score, y = class)) +
   facet_grid(factor ~ .) +
   theme(legend.position = "bottom") +
@@ -612,33 +768,33 @@ data_factors_long %>%
 ### class
 
 ```{r}
-analyze_distributions(data_factors_long, "class")
+analyze_distributions(data_factors_noout_long, "class")
 ```
 
 ### subcorpus
 
 ```{r}
-analyze_distributions(data_factors_long, "subcorpus")
+analyze_distributions(data_factors_noout_long, "subcorpus")
 ```
 
 ### subcorpus wo/ LiFRLaw
 
 ```{r}
 analyze_distributions(
-  data_factors_long %>% filter(subcorpus != "LiFRLaw"), "subcorpus"
+  data_factors_noout_long %>% filter(subcorpus != "LiFRLaw"), "subcorpus"
 )
 ```
 
 ### AuthorType
 
 ```{r}
-analyze_distributions(data_factors_long, "AuthorType")
+analyze_distributions(data_factors_noout_long, "AuthorType")
 ```
 
 ### RecipientType
 
 ```{r}
-analyze_distributions(data_factors_long, "RecipientType")
+analyze_distributions(data_factors_noout_long, "RecipientType")
 ```
 
 court decisions often with `RecipientType = combined`.
@@ -646,31 +802,31 @@ court decisions often with `RecipientType = combined`.
 ### RecipientIndividuation
 
 ```{r}
-analyze_distributions(data_factors_long, "RecipientIndividuation")
+analyze_distributions(data_factors_noout_long, "RecipientIndividuation")
 ```
 
 ### Objectivity
 
 ```{r}
-analyze_distributions(data_factors_long, "Objectivity")
+analyze_distributions(data_factors_noout_long, "Objectivity")
 ```
 
 ### Bindingness
 
 ```{r}
-analyze_distributions(data_factors_long, "Bindingness")
+analyze_distributions(data_factors_noout_long, "Bindingness")
 ```
 
 # Feature-factor correlations
 
 ```{r}
-data_factors_longer <- data_factors_long %>%
+data_factors_clean_longer <- data_factors_noout_long %>%
   pivot_longer(
     abstractNOUNs:verbdist,
     names_to = "feat", values_to = "feat_value"
   )
 
-data_factors_correlations <- data_factors_longer %>%
+data_factors_correlations <- data_factors_clean_longer %>%
   group_by(feat, factor) %>%
   summarize(correlation = cor(feat_value, factor_score))
 
