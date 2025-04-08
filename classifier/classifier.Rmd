@@ -153,8 +153,6 @@ data_clean <- data_no_nas %>%
     RuleCaseRepetition,
     RuleLongSentences,
     RulePredAtClauseBeginning,
-    sent_count,
-    word_count,
     syllab_count,
     char_count
   )) %>%
