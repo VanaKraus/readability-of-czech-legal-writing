@@ -5,17 +5,10 @@ RuleCaseRepetition.max_repetition_count,0.07217910115356686,FALSE
 RuleCaseRepetition.max_repetition_count.v,0.004793100953279634,TRUE
 RuleConfirmationExpressions,0.09845697854130628,FALSE
 RuleDoubleAdpos,0.31170678890550024,FALSE
-RuleDoubleAdpos.max_allowable_distance,1.543750525747947e-4,TRUE
+RuleDoubleAdpos.max_allowable_distance,1.896634749222862e-4,TRUE
 RuleDoubleAdpos.max_allowable_distance.v,3.5564811831808574e-6,TRUE
-RuleGPadjective,0.3797618717513577,FALSE
-RuleGPcoordovs,0.8279862801016026,FALSE
-RuleGPdeverbaddr,0.011169726285074478,TRUE
-RuleGPdeverbsubj,0.013339985349822696,TRUE
-RuleGPpatbenperson,0.41438079218455415,FALSE
-RuleGPpatinstr,0.37225610670899195,FALSE
-RuleGPwordorder,2.4631056404946434e-6,TRUE
 RuleInfVerbDistance,3.5484123321345262e-15,TRUE
-RuleInfVerbDistance.max_distance,0.10327393840043456,FALSE
+RuleInfVerbDistance.max_distance,0.05567193902145144,FALSE
 RuleInfVerbDistance.max_distance.v,0.07551786170281027,FALSE
 RuleLiteraryStyle,6.102751766525443e-21,TRUE
 RuleLongSentences.max_length,7.1495138262075125e-31,TRUE
@@ -27,7 +20,7 @@ RulePassive,6.855885182876515e-20,TRUE
 RulePredAtClauseBeginning.max_order,7.626297290212153e-19,TRUE
 RulePredAtClauseBeginning.max_order.v,3.1414406885546322e-12,TRUE
 RulePredObjDistance,5.142746111746067e-4,TRUE
-RulePredObjDistance.max_distance,9.246031163573122e-5,TRUE
+RulePredObjDistance.max_distance,7.732631800716251e-5,TRUE
 RulePredObjDistance.max_distance.v,4.442898013842506e-7,TRUE
 RulePredSubjDistance,1.2195863310888049e-14,TRUE
 RulePredSubjDistance.max_distance,6.000665971927705e-5,TRUE
@@ -38,9 +31,9 @@ RuleRelativisticExpressions,0.002054510662383054,TRUE
 RuleTooFewVerbs.min_verb_frac,2.490669669391586e-34,TRUE
 RuleTooFewVerbs.min_verb_frac.v,6.240460431225048e-6,TRUE
 RuleTooLongExpressions,0.31052593745376184,FALSE
-RuleTooManyNegations.max_allowable_negations,4.704566582963597e-13,TRUE
+RuleTooManyNegations.max_allowable_negations,6.193334517227441e-13,TRUE
 RuleTooManyNegations.max_allowable_negations.v,1.2625548223911636e-6,TRUE
-RuleTooManyNegations.max_negation_frac,6.275697969395745e-7,TRUE
+RuleTooManyNegations.max_negation_frac,2.7147422575828667e-7,TRUE
 RuleTooManyNegations.max_negation_frac.v,0.03650290444320978,TRUE
 RuleTooManyNominalConstructions.max_allowable_nouns,5.4271918536219875e-25,TRUE
 RuleTooManyNominalConstructions.max_allowable_nouns.v,5.0722223374342786e-15,TRUE
@@ -68,3 +61,4 @@ smog,3.333397167731645e-33,TRUE
 ttr,0.06106754028938268,FALSE
 verb_dist,6.4935449861916226e-24,TRUE
 word_count,1.6756341209765055e-6,TRUE
+GPs,0.01376905037250192,TRUE

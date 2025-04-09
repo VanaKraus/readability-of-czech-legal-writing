@@ -45,9 +45,9 @@ RulePredSubjDistance.max_distance.v,predsubjdist.v
 RulePredObjDistance,obj
 RulePredObjDistance.max_distance,predobjdist.m
 RulePredObjDistance.max_distance.v,predobjdist.v
-RuleInfVerbDistance,xcomp
-RuleInfVerbDistance.max_distance,xcompdist.m
-RuleInfVerbDistance.max_distance.v,xcompdist.v
+RuleInfVerbDistance,VERBcomp
+RuleInfVerbDistance.max_distance,VERBcompdist.m
+RuleInfVerbDistance.max_distance.v,VERBcompdist.v
 RuleMultiPartVerbs,compoundVERBs
 RuleMultiPartVerbs.max_distance,compoundVERBsdist.m
 RuleMultiPartVerbs.max_distance.v,compoundVERBsdist.v

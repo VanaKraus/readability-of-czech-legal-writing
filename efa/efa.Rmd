@@ -7,6 +7,7 @@ output: pdf_document
 set.seed(42)
 
 library(igraph)
+library(corrplot)
 library(QuantPsyc) # for the multivariate normality test
 library(dunn.test)
 library(nFactors) # for the scree plot
@@ -70,14 +71,11 @@ data_no_nas <- data %>%
     RuleGPpatbenperson = 0,
     RuleGPwordorder = 0,
     RuleDoubleAdpos = 0,
-    RuleDoubleAdpos.max_allowable_distance = 0,
     RuleDoubleAdpos.max_allowable_distance.v = 0,
     RuleAmbiguousRegards = 0,
     RuleReflexivePassWithAnimSubj = 0,
     RuleTooManyNegations = 0,
-    RuleTooManyNegations.max_negation_frac = 0,
     RuleTooManyNegations.max_negation_frac.v = 0,
-    RuleTooManyNegations.max_allowable_negations = 0,
     RuleTooManyNegations.max_allowable_negations.v = 0,
     RuleTooManyNominalConstructions.max_noun_frac.v = 0,
     RuleTooManyNominalConstructions.max_allowable_nouns.v = 0,
@@ -94,16 +92,12 @@ data_no_nas <- data %>%
     RuleLiteraryStyle = 0,
     RulePassive = 0,
     RulePredSubjDistance = 0,
-    RulePredSubjDistance.max_distance = 0,
     RulePredSubjDistance.max_distance.v = 0,
     RulePredObjDistance = 0,
-    RulePredObjDistance.max_distance = 0,
     RulePredObjDistance.max_distance.v = 0,
     RuleInfVerbDistance = 0,
-    RuleInfVerbDistance.max_distance = 0,
     RuleInfVerbDistance.max_distance.v = 0,
     RuleMultiPartVerbs = 0,
-    RuleMultiPartVerbs.max_distance = 0,
     RuleMultiPartVerbs.max_distance.v = 0,
     RuleLongSentences.max_length.v = 0,
     RulePredAtClauseBeginning.max_order.v = 0,
@@ -112,18 +106,41 @@ data_no_nas <- data %>%
     RuleWrongValencyCase = 0,
     RuleWrongVerbonominalCase = 0,
     RuleIncompleteConjunction = 0
-  ))
-
-data_clean <- data_no_nas %>%
-  # norm data expected to correlate with text length
+  )) %>%
+  # replace NAs with medians
   mutate(across(c(
+    RuleDoubleAdpos.max_allowable_distance,
+    RuleTooManyNegations.max_negation_frac,
+    RuleTooManyNegations.max_allowable_negations,
+    RulePredSubjDistance.max_distance,
+    RulePredObjDistance.max_distance,
+    RuleInfVerbDistance.max_distance,
+    RuleMultiPartVerbs.max_distance
+  ), ~ coalesce(., median(., na.rm = TRUE)))) %>%
+  # merge GPs
+  mutate(
+    GPs = RuleGPcoordovs +
+      RuleGPdeverbaddr +
+      RuleGPpatinstr +
+      RuleGPdeverbsubj +
+      RuleGPadjective +
+      RuleGPpatbenperson +
+      RuleGPwordorder
+  ) %>%
+  select(!c(
     RuleGPcoordovs,
     RuleGPdeverbaddr,
     RuleGPpatinstr,
     RuleGPdeverbsubj,
     RuleGPadjective,
     RuleGPpatbenperson,
-    RuleGPwordorder,
+    RuleGPwordorder
+  ))
+
+data_clean <- data_no_nas %>%
+  # norm data expected to correlate with text length
+  mutate(across(c(
+    GPs,
     RuleDoubleAdpos,
     RuleAmbiguousRegards,
     RuleFunctionWordRepetition,
@@ -196,11 +213,11 @@ data_clean <- data_no_nas %>%
   ), ~ as.factor(.x)))
 
 # no NAs should be present now
-data_clean[!complete.cases(data_clean), ]
+data_clean[!complete.cases(data_clean[.firstnonmetacolumn:ncol(data_clean)]), ]
 
 data_clean_scaled <- data_clean %>%
   mutate(across(class, ~ .x == "good")) %>%
-  mutate(across(.firstnonmetacolumn:length(names(data_clean)), ~ scale(.x)))
+  mutate(across(.firstnonmetacolumn:ncol(data_clean), ~ scale(.x)))
 ```
 
 # Important features identification
@@ -265,50 +282,13 @@ analyze_correlation <- function(data) {
   )
 }
 
-data_purish <- data_clean %>% select(any_of(selected_features_names)) %>%
-  # remove features expected to have low communalities
-  select(!c(
-    RuleDoubleAdpos.max_allowable_distance,
-    RuleDoubleAdpos.max_allowable_distance.v,
-    RuleGPwordorder,
-    RuleLiteraryStyle,
-    maentropy.v,
-    RuleTooManyNegations.max_negation_frac,
-    RulePredSubjDistance.max_distance,
-    RuleTooManyNegations.max_allowable_negations,
-    RuleTooManyNegations.max_allowable_negations.v,
-    RuleTooManyNominalConstructions.max_allowable_nouns.v,
-    RuleTooFewVerbs.min_verb_frac.v,
-    RulePredObjDistance.max_distance.v,
-    RulePredObjDistance.max_distance,
-    RulePredAtClauseBeginning.max_order.v,
-    RuleInfVerbDistance
-  )) %>%
-  # remove features expected to have low loadings
-  select(!c(
-    RuleMultiPartVerbs.max_distance.v,
-    RulePredSubjDistance.max_distance.v,
-    RuleLongSentences.max_length
-  ))
+data_purish <- data_clean %>% select(any_of(selected_features_names))
 ```
 
-## Extremely non-normal data
+what unites the low-communality variables we threw out:
 
-```{r}
-# # remove where median == 0?
-# keep <- character()
-# for (i in seq_along(colnames(data_purish))) {
-#   cname <- colnames(data_purish)[i]
-#   q <- quantile(data_purish[, i][[1]], probs = 0.10)[[1]]
-#   if (q > 0) {
-#     keep <- c(keep, cname)
-#     cat("keep", cname, "\n")
-#   } else {
-#     cat("throw out", cname, "\n")
-#   }
-# }
-# data_purish <- data_purish %>% select(any_of(keep))
-```
+- variations have little to do with any other variables in the dataset; there is no factor stemming from the remainder of the feature set to explain them
+- 
 
 ## High correlations
 
@@ -330,7 +310,10 @@ exclude:
 - **atl:** corr. w/ cli around 0.96; unlike cli, atl is not a readability metric
 
 ```{r}
-high_correlations <- findCorrelation(cor(data_purish), verbose = TRUE)
+high_correlations <- findCorrelation(
+  cor(data_purish),
+  verbose = TRUE, cutoff = .hcorrcutoff
+)
 names(data_purish)[high_correlations]
 
 data_pureish_striphigh <- data_purish %>% select(!all_of(high_correlations))
@@ -373,11 +356,17 @@ colnames(data_pure) <- cnames
 
 ## Visualisation
 
+
+```{r}
+corrplot(cor(data_pure))
+corrplot(abs(cor(data_pure)))
+```
+
 ```{r fig.width=12, fig.height=12, fig.align='center'}
 my_colors <- paletteer::paletteer_d("ggthemes::Classic_10_Medium")
 
 network_edges <- analyze_correlation(data_pure)$cor_tibble_long_upper %>%
-  filter(abs_cor > 0.3)
+  filter(abs_cor > .lcorrcutoff)
 
 network <- graph_from_data_frame(
   network_edges,
@@ -406,8 +395,6 @@ plot(
 ```{r}
 data_scaled <- data_pure %>%
   mutate(across(seq_along(data_pure), ~ scale(.x)[, 1]))
-
-final_collist <- data_scaled %>% colnames()
 ```
 
 # Check for normality
@@ -418,7 +405,7 @@ mult.norm(data_scaled %>% as.data.frame())$mult.test
 
 Low (null) p-values show that we can reject the hypothesis that the data would be in a multivariate normal distribution. I.e. the distribution isn't multivariate normal.
 
-# FA
+# first FA
 
 ## No. of factors
 
@@ -442,12 +429,140 @@ fa.parallel(data_scaled, fm = "pa", fa = "fa", n.iter = 20)
 <https://www.rdocumentation.org/packages/psych/versions/2.5.3/topics/fa>
 
 ```{r}
-# appears to be the happiest when nfactors = 6 or 7
-# throws the The estimated weights for the factor scores are probably incorrect.
-# Try a different factor score estimation method. warning otherwise
-fa_res <- fa(
+# produces ultra-Heywood cases when nfactors = 9
+fa_1 <- fa(
   data_scaled,
-  nfactors = 7,
+  nfactors = 9,
+  fm = "pa",
+  rotate = "promax",
+  oblique.scores = TRUE,
+  scores = "tenBerge",
+  n.iter = 100
+)
+fa_1
+```
+
+### Healthiness diagnostics
+
+```{r}
+fa_1$loadings[] %>%
+  as_tibble() %>%
+  mutate(feat = cnames) %>%
+  select(feat, everything()) %>%
+  pivot_longer(!feat) %>%
+  mutate(value = abs(value)) %>%
+  group_by(feat) %>%
+  summarize(maxload = max(value)) %>%
+  arrange(maxload)
+
+fa_1$communality %>% sort()
+fa_1$communality[fa_1$communality < 0.5] %>% names()
+
+fa_1$complexity %>% sort()
+fa_1$complexity[fa_1$complexity > 2] %>% names()
+```
+
+## Feature engineering
+
+```{r}
+data_engineered_1 <- data_scaled %>%
+  # remove low-communality variables
+  select(!c(
+    doubleADPdist.m,
+    doubleADPdist.v,
+    literary,
+    compoundVERBsdist.m,
+    compoundVERBsdist.v,
+    predobjdist.m,
+    predobjdist.v,
+    predsubjdist.v,
+    VERBfrac.v,
+    NEGfrac.m,
+    NOUNcount.v,
+    entropy.v
+  )) %>%
+  # remove confound variables
+  select(!c(cli, fkgl, fre))
+
+det(cor(data_engineered_1))
+KMO(data_engineered_1)
+```
+
+# second FA
+
+## No. of vectors
+
+```{r}
+fa.parallel(data_engineered_1, fm = "pa", fa = "fa", n.iter = 20)
+```
+
+## Model
+
+```{r}
+fa_2 <- fa(
+  data_engineered_1,
+  nfactors = 5,
+  fm = "pa",
+  rotate = "promax",
+  oblique.scores = TRUE,
+  scores = "tenBerge",
+  n.iter = 100
+)
+fa_2
+```
+
+### Healthiness diagnostics
+
+```{r}
+fa_2$loadings[] %>%
+  as_tibble() %>%
+  mutate(feat = colnames(data_engineered_1)) %>%
+  select(feat, everything()) %>%
+  pivot_longer(!feat) %>%
+  mutate(value = abs(value)) %>%
+  group_by(feat) %>%
+  summarize(maxload = max(value)) %>%
+  arrange(maxload)
+
+fa_2$communality %>% sort()
+fa_2$communality[fa_2$communality < 0.5] %>% names()
+
+fa_2$complexity %>% sort()
+fa_2$complexity[fa_2$complexity > 2] %>% names()
+```
+
+## Feature engineering
+
+```{r}
+data_engineered_2 <- data_engineered_1 %>%
+  # remove low-communality features
+  select(!c(
+    passives,
+    predorder.v,
+    obj,
+    predsubjdist.m
+  ))
+
+det(cor(data_engineered_2))
+KMO(data_engineered_2)
+
+final_collist <- data_engineered_2 %>% colnames()
+```
+
+# Final FA
+
+## No. of vectors
+
+```{r}
+fa.parallel(data_engineered_2, fm = "pa", fa = "fa", n.iter = 20)
+```
+
+## Model
+
+```{r}
+fa_res <- fa(
+  data_engineered_2,
+  nfactors = 5,
   fm = "pa",
   rotate = "promax",
   oblique.scores = TRUE,
@@ -457,9 +572,33 @@ fa_res <- fa(
 fa_res
 ```
 
-### Loadings
+### Healthiness diagnostics
 
 ```{r}
+fa_res$loadings[] %>%
+  as_tibble() %>%
+  mutate(feat = colnames(data_engineered_2)) %>%
+  select(feat, everything()) %>%
+  pivot_longer(!feat) %>%
+  mutate(value = abs(value)) %>%
+  group_by(feat) %>%
+  summarize(maxload = max(value)) %>%
+  arrange(maxload)
+
+fa_res$communality %>% sort()
+fa_res$communality[fa_res$communality < 0.5] %>% names()
+
+fa_res$complexity %>% sort()
+fa_res$complexity[fa_res$complexity > 2] %>% names()
+```
+
+### Loadings
+
+Comrey and Lee (1992): loadings excelent > .70 > very good > .63 > good > .55 > fair > .45 > poor > .32
+
+```{r}
+fa.diagram(fa_res)
+
 fa_res$loadings
 
 for (i in 1:fa_res$factors) {
@@ -471,10 +610,11 @@ for (i in 1:fa_res$factors) {
   load_df_filtered <- load_df %>%
     mutate(abs_l = abs(loading)) %>%
     mutate(str = case_when(
-      abs_l > 0.7 ~ "***",
-      abs_l <= 0.7 & abs_l > 0.5 ~ "** ",
-      abs_l <= 0.5 & abs_l > 0.3 ~ "*  ",
-      abs_l <= 0.3 & abs_l > 0.1 ~ ".  ",
+      abs_l > 0.70 ~ "****",
+      abs_l <= 0.70 & abs_l > 0.63 ~ "*** ",
+      abs_l <= 0.63 & abs_l > 0.55 ~ "**  ",
+      abs_l <= 0.55 & abs_l > 0.45 ~ "*   ",
+      abs_l <= 0.45 & abs_l > 0.32 ~ ".   ",
       .default = ""
     )) %>%
     arrange(-abs_l) %>%
@@ -491,47 +631,32 @@ for (i in 1:fa_res$factors) {
 hypotheses:
 
 - **PA1:** register – narrativity, richness of expression; shorter clauses (-technical / +narrative)
-  - narrativity? (1st and 2nd persons etc.)
+  - long nominal constr., predicate far down, verbs far apart / compound verbs, overt subjects, morphologically diverse, more verbs, activity
 - **PA2:** text length (-short / +long)
   - hapaxes load negatively, because I normed them over word count
-- **PA6:** sentence complexity (more clauses) (-simple / +complex)
-  - slightly longer nominal constructions / more objects, more years of education necessary, predicates slightly further in the clause, slightly more verbs
-  - `fkgl` in strong correlation with `sentlen.m`
-- **PA3:** word length (-short / +long)
-  - cli highly correlates with atl, meaning the factor likely expresses mostly token lengths
-  - slightly more passives, slightly more objects, slightly less verbal overall / slightly longer nom. constructions, slightly morphologically richer, many years of education necessary
-  - more enumerations? but one would expect higher `activity` differences to occur if that was the case
+- **PA5:** activity (-passive / +active)
+  - more adjectives / many verbs, more verbcomps
+  - nothing to do with compound verbs
+  - but something to do with verbal complements
+  - `UPOS` of passives annotated as `ADJ` in UD
+- **PA3:** negations (-less negated / +more negated)
 - **PA4:** lexical richness (-poor / +rich)
-- **PA5:** passivity (-active / +passive)
-  - compound verbs, because that's what passives are in Czech
-  - smaller activity, because passive participles count as `ADJ` in UD.
-- **PA7:** compound verbs (-less / +more)
 
-strong correlations:
+strong correlations (but not necessarily significant):
 
-- **PA1–PA6:** (-0.38) narrativity leads to simple clauses
-- **PA2–PA6:** (+0.30) longer texts include more complex sentences
-- **PA1–PA5:** (-0.49, topconf = +0.09) narrative texts more active
+- **PA1+PA5** (-0.67 / **+0.60** / +0.81): narrative texts are active, technical texts are passive
+
+significant correlations (CIs not spanning over 0):
+
+- **PA1+PA2** (+0.10 / **+0.18** / +0.26): narrative texts tend to be slightly longer
+  - strange? but the correlation isn't as strong
+- **PA2+PA5** (+0.00 / **+0.07** / +0.45): longer texts are more active
+  - PA2 behavior opposite to what one would expect
 
 > **NOTE:** variables with low communalities are excluded from the analysis, yet still likely play a role in legal writing readability. this includes both those selected for the analysis and the excluded ones.
 >
 > **NOTE:** some high-correlating variables were excluded from the FA.
 
-### Healthiness diagnostics
-
-```{r}
-fa_res$loadings[] %>%
-  as_tibble() %>%
-  mutate(feat = cnames) %>%
-  select(feat, everything()) %>%
-  pivot_longer(!feat) %>%
-  mutate(value = abs(value)) %>%
-  group_by(feat) %>%
-  summarize(maxload = max(value)) %>%
-  arrange(maxload)
-
-fa_res$communality %>% sort()
-```
 
 ### Uniquenesses
 
@@ -596,10 +721,10 @@ cnames <- map(
 colnames(data_factors) <- cnames
 
 data_factors_long <- data_factors %>%
-  pivot_longer(PA1:PA7, names_to = "factor", values_to = "factor_score") %>%
+  pivot_longer(PA1:PA4, names_to = "factor", values_to = "factor_score") %>%
   mutate(across(
     factor,
-    ~ factor(.x, levels = c("PA1", "PA2", "PA6", "PA3", "PA4", "PA5", "PA7"))
+    ~ factor(.x, levels = c("PA1", "PA2", "PA5", "PA3", "PA4"))
   ))
 
 data_factors_long %>%
