@@ -197,10 +197,13 @@ df <- df %>%
 df <- df %>% filter(!(FileName %in% bad_frbo_duplicates))
 
 # these two are also duplicates
-df <- df %>% filter(!(FileName %in% c(
-  "orig_Mohou spolky ve správních žalobách používat věcné argumenty_final, odkaz na soudní ochrana spolků",
-  "red_Mohou spolky ve správních žalobách používat věcné argumenty_final, odkaz na soudní ochrana spolků"
-)))
+df <- df %>%
+  filter(!(FileName %in% c(
+    "orig_Mohou spolky ve správních žalobách používat věcné argumenty_final, odkaz na soudní ochrana spolků",
+    "red_Mohou spolky ve správních žalobách používat věcné argumenty_final, odkaz na soudní ochrana spolků"
+  ))) %>%
+  # missing in real data
+  filter(FileName != "partred_Jak chránit vody a správně s nimi nakládat")
 
 # remove OmbuFlyer–KUKY duplicates with different names
 # keep the ones from KUKY
@@ -212,10 +215,10 @@ bad_of_kuky_duplicates <- df %>%
   ungroup() %>%
   filter(n > 1 & subcorpus == "OmbuFlyers") %>%
   select(!c(new_fname, n)) %>%
-  pull(FileName)
+  pull(KUK_ID)
 bad_of_kuky_duplicates
 
-df <- df %>% filter(!(FileName %in% bad_of_kuky_duplicates))
+df <- df %>% filter(!(KUK_ID %in% bad_of_kuky_duplicates))
 
 # keep only rows where either Readability or ClarityPursuit isn't NA
 # and exclude ClarityPursuit == TRUE
