@@ -6,6 +6,7 @@ output: pdf_document
 ```{r}
 set.seed(42)
 
+library(rcompanion) # effect size calculation
 library(igraph)
 library(corrplot)
 library(QuantPsyc) # for the multivariate normality test
@@ -609,12 +610,12 @@ for (i in 1:fa_res$factors) {
 
   load_df_filtered <- load_df %>%
     mutate(abs_l = abs(loading)) %>%
-    mutate(str = case_when(
-      abs_l > 0.70 ~ "****",
-      abs_l <= 0.70 & abs_l > 0.63 ~ "*** ",
-      abs_l <= 0.63 & abs_l > 0.55 ~ "**  ",
-      abs_l <= 0.55 & abs_l > 0.45 ~ "*   ",
-      abs_l <= 0.45 & abs_l > 0.32 ~ ".   ",
+    mutate(strng = case_when(
+      abs_l > 0.70 ~ "*****",
+      abs_l <= 0.70 & abs_l > 0.63 ~ "**** ",
+      abs_l <= 0.63 & abs_l > 0.55 ~ "***  ",
+      abs_l <= 0.55 & abs_l > 0.45 ~ "**   ",
+      abs_l <= 0.45 & abs_l > 0.32 ~ "*    ",
       .default = ""
     )) %>%
     arrange(-abs_l) %>%
@@ -677,6 +678,8 @@ analyze_distributions <- function(data_factors_long, variable) {
   formula <- reformulate(variable, "factor_score")
   factors <- levels(data_factors_long$factor)
 
+  p_val <- numeric()
+  epsilon2 <- numeric()
   min_p_values <- numeric()
   for (f in factors) {
     data <- data_factors_long %>% filter(factor == f)
@@ -686,21 +689,32 @@ analyze_distributions <- function(data_factors_long, variable) {
       variable, "over", f, ":\n\n"
     )
 
+    kw <- kruskal.test(data$factor_score, data[[variable]])
+
     dunn <- dunn.test(
       data$factor_score, data[[variable]],
       altp = TRUE, method = "bonferroni"
     )
+
+    e2 <- epsilonSquared(data$factor_score, data[[variable]])
+    cat("epsilon2 = ", e2, "\n")
+
     min_p_values <- c(min_p_values, min(dunn$altP.adjusted))
+    p_val <- c(p_val, kw$p.value)
+    epsilon2 <- c(epsilon2, e2)
   }
 
+  cat("\n")
+  print(data.frame(factor = factors, kruskal_p = p_val, epsilon2 = epsilon2), digits = 3)
+
   cat(
-    "\np < 5e-2\tfound in:",
+    "\np < 5e-2 found in:",
     factors[min_p_values < 0.05],
-    "\np < 1e-2\tfound in:",
+    "\np < 1e-2 found in:",
     factors[min_p_values < 0.01],
-    "\np < 1e-3\tfound in:",
+    "\np < 1e-3 found in:",
     factors[min_p_values < 0.001],
-    "\np < 1e-4\tfound in:",
+    "\np < 1e-4 found in:",
     factors[min_p_values < 0.0001], "\n"
   )
 }
