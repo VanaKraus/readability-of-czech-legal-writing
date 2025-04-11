@@ -27,6 +27,25 @@ conflict_prefer("filter", "dplyr")
 
 ```{r}
 pretty_names <- read_csv("../feat_name_mapping.csv")
+
+prettify_feat_name <- function(x) {
+  name <- pull(pretty_names %>%
+    filter(name_orig == x), name_pretty)
+  if (length(name) == 1) {
+    return(name)
+  } else {
+    return(x)
+  }
+}
+
+prettify_feat_name_vector <- function(x) {
+  map(
+    x,
+    prettify_feat_name
+  ) %>% unlist()
+}
+
+
 data <- read_csv("../measurements/measurements.csv")
 
 .firstnonmetacolumn <- 17
@@ -809,6 +828,10 @@ data_factors_long <- data_factors %>%
   ))
 
 data_factors_long %>%
+  group_by(factor) %>%
+  summarize(shapiro = shapiro.test(factor_score)$p.value)
+
+data_factors_long %>%
   ggplot(aes(x = factor_score, y = class)) +
   facet_grid(factor ~ .) +
   theme(legend.position = "bottom") +
@@ -872,7 +895,7 @@ analyze_distributions(data_factors_long, "Bindingness")
 ```{r}
 data_factors_longer <- data_factors_long %>%
   pivot_longer(
-    abstractNOUNs:verbdist,
+    abstractNOUNs:GPs,
     names_to = "feat", values_to = "feat_value"
   )
 

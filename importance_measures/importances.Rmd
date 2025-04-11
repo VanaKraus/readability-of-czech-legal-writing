@@ -1,0 +1,453 @@
+---
+title: Importance measures
+output: pdf_document
+---
+
+```{r}
+set.seed(42)
+
+library(rcompanion) # KW effect size calculation
+library(rstatix) # Wilcox effect size calculation
+library(igraph)
+library(corrplot)
+library(QuantPsyc) # for the multivariate normality test
+library(dunn.test)
+library(nFactors) # for the scree plot
+library(psych) # for PA FA
+library(caret) # highly correlated features removal
+library(tidymodels)
+library(vip)
+library(tidyverse)
+
+library(paletteer) # color palettes
+
+library(conflicted) # to resolve QuantPsyc x dplyr conflicts
+conflict_prefer("select", "dplyr")
+conflict_prefer("filter", "dplyr")
+```
+
+# Load and tidy data
+
+```{r}
+pretty_names <- read_csv("../feat_name_mapping.csv")
+
+prettify_feat_name <- function(x) {
+  name <- pull(pretty_names %>%
+    filter(name_orig == x), name_pretty)
+  if (length(name) == 1) {
+    return(name)
+  } else {
+    return(x)
+  }
+}
+
+prettify_feat_name_vector <- function(x) {
+  map(
+    x,
+    prettify_feat_name
+  ) %>% unlist()
+}
+
+
+data <- read_csv("../measurements/measurements.csv")
+
+.firstnonmetacolumn <- 17
+
+data_no_nas <- data %>%
+  select(!c(
+    fpath,
+    # KUK_ID,
+    # FileName,
+    FolderPath,
+    # subcorpus,
+    DocumentTitle,
+    ClarityPursuit,
+    Readability,
+    SyllogismBased,
+    SourceDB
+  )) %>%
+  # replace -1s in variation coefficients with NAs
+  mutate(across(c(
+    `RuleDoubleAdpos.max_allowable_distance.v`,
+    `RuleTooManyNegations.max_negation_frac.v`,
+    `RuleTooManyNegations.max_allowable_negations.v`,
+    `RuleTooManyNominalConstructions.max_noun_frac.v`,
+    `RuleTooManyNominalConstructions.max_allowable_nouns.v`,
+    `RuleCaseRepetition.max_repetition_count.v`,
+    `RuleCaseRepetition.max_repetition_frac.v`,
+    `RulePredSubjDistance.max_distance.v`,
+    `RulePredObjDistance.max_distance.v`,
+    `RuleInfVerbDistance.max_distance.v`,
+    `RuleMultiPartVerbs.max_distance.v`,
+    `RuleLongSentences.max_length.v`,
+    `RulePredAtClauseBeginning.max_order.v`,
+    `mattr.v`,
+    `maentropy.v`
+  ), ~ na_if(.x, -1))) %>%
+  # replace NAs with 0s
+  replace_na(list(
+    RuleGPcoordovs = 0,
+    RuleGPdeverbaddr = 0,
+    RuleGPpatinstr = 0,
+    RuleGPdeverbsubj = 0,
+    RuleGPadjective = 0,
+    RuleGPpatbenperson = 0,
+    RuleGPwordorder = 0,
+    RuleDoubleAdpos = 0,
+    RuleDoubleAdpos.max_allowable_distance.v = 0,
+    RuleAmbiguousRegards = 0,
+    RuleReflexivePassWithAnimSubj = 0,
+    RuleTooManyNegations = 0,
+    RuleTooManyNegations.max_negation_frac.v = 0,
+    RuleTooManyNegations.max_allowable_negations.v = 0,
+    RuleTooManyNominalConstructions.max_noun_frac.v = 0,
+    RuleTooManyNominalConstructions.max_allowable_nouns.v = 0,
+    RuleFunctionWordRepetition = 0,
+    RuleCaseRepetition.max_repetition_count.v = 0,
+    RuleCaseRepetition.max_repetition_frac.v = 0,
+    RuleWeakMeaningWords = 0,
+    RuleAbstractNouns = 0,
+    RuleRelativisticExpressions = 0,
+    RuleConfirmationExpressions = 0,
+    RuleRedundantExpressions = 0,
+    RuleTooLongExpressions = 0,
+    RuleAnaphoricReferences = 0,
+    RuleLiteraryStyle = 0,
+    RulePassive = 0,
+    RulePredSubjDistance = 0,
+    RulePredSubjDistance.max_distance.v = 0,
+    RulePredObjDistance = 0,
+    RulePredObjDistance.max_distance.v = 0,
+    RuleInfVerbDistance = 0,
+    RuleInfVerbDistance.max_distance.v = 0,
+    RuleMultiPartVerbs = 0,
+    RuleMultiPartVerbs.max_distance.v = 0,
+    RuleLongSentences.max_length.v = 0,
+    RulePredAtClauseBeginning.max_order.v = 0,
+    RuleVerbalNouns = 0,
+    RuleDoubleComparison = 0,
+    RuleWrongValencyCase = 0,
+    RuleWrongVerbonominalCase = 0,
+    RuleIncompleteConjunction = 0
+  )) %>%
+  # replace NAs with medians
+  mutate(across(c(
+    RuleDoubleAdpos.max_allowable_distance,
+    RuleTooManyNegations.max_negation_frac,
+    RuleTooManyNegations.max_allowable_negations,
+    RulePredSubjDistance.max_distance,
+    RulePredObjDistance.max_distance,
+    RuleInfVerbDistance.max_distance,
+    RuleMultiPartVerbs.max_distance
+  ), ~ coalesce(., median(., na.rm = TRUE)))) %>%
+  # merge GPs
+  mutate(
+    GPs = RuleGPcoordovs +
+      RuleGPdeverbaddr +
+      RuleGPpatinstr +
+      RuleGPdeverbsubj +
+      RuleGPadjective +
+      RuleGPpatbenperson +
+      RuleGPwordorder
+  ) %>%
+  select(!c(
+    RuleGPcoordovs,
+    RuleGPdeverbaddr,
+    RuleGPpatinstr,
+    RuleGPdeverbsubj,
+    RuleGPadjective,
+    RuleGPpatbenperson,
+    RuleGPwordorder
+  ))
+
+data_clean <- data_no_nas %>%
+  # norm data expected to correlate with text length
+  mutate(across(c(
+    GPs,
+    RuleDoubleAdpos,
+    RuleAmbiguousRegards,
+    RuleFunctionWordRepetition,
+    RuleWeakMeaningWords,
+    RuleAbstractNouns,
+    RuleRelativisticExpressions,
+    RuleConfirmationExpressions,
+    RuleRedundantExpressions,
+    RuleTooLongExpressions,
+    RuleAnaphoricReferences,
+    RuleLiteraryStyle,
+    RulePassive,
+    RuleVerbalNouns,
+    RuleDoubleComparison,
+    RuleWrongValencyCase,
+    RuleWrongVerbonominalCase,
+    RuleIncompleteConjunction,
+    num_hapax,
+    RuleReflexivePassWithAnimSubj,
+    RuleTooManyNominalConstructions,
+    RulePredSubjDistance,
+    RuleMultiPartVerbs,
+    RulePredAtClauseBeginning
+  ), ~ .x / word_count)) %>%
+  mutate(across(c(
+    RuleTooFewVerbs,
+    RuleTooManyNegations,
+    RuleCaseRepetition,
+    RuleLongSentences,
+    RulePredObjDistance,
+    RuleInfVerbDistance
+  ), ~ .x / sent_count)) %>%
+  # remove variables identified as text-length dependent
+  select(!c(
+    RuleTooFewVerbs,
+    RuleTooManyNegations,
+    RuleTooManyNominalConstructions,
+    RuleCaseRepetition,
+    RuleLongSentences,
+    RulePredAtClauseBeginning,
+    syllab_count,
+    char_count
+  )) %>%
+  # remove variables identified as unreliable
+  select(!c(
+    RuleAmbiguousRegards,
+    RuleFunctionWordRepetition,
+    RuleDoubleComparison,
+    RuleWrongValencyCase,
+    RuleWrongVerbonominalCase
+  )) %>%
+  # remove further variables belonging to the 'acceptability' category
+  select(!c(RuleIncompleteConjunction)) %>%
+  # remove artificially limited variables
+  select(!c(
+    RuleCaseRepetition.max_repetition_frac,
+    RuleCaseRepetition.max_repetition_frac.v
+  )) %>%
+  # remove variables with too many NAs
+  select(!c(
+    RuleDoubleAdpos.max_allowable_distance,
+    RuleDoubleAdpos.max_allowable_distance.v
+  )) %>%
+  mutate(across(c(
+    class,
+    FileFormat,
+    subcorpus,
+    DocumentVersion,
+    LegalActType,
+    Objectivity,
+    AuthorType,
+    RecipientType,
+    RecipientIndividuation,
+    Anonymized
+  ), ~ as.factor(.x)))
+
+# no NAs should be present now
+data_clean[!complete.cases(data_clean[.firstnonmetacolumn:ncol(data_clean)]), ]
+
+colnames(data_clean) <- prettify_feat_name_vector(colnames(data_clean))
+
+data_clean_scaled <- data_clean %>%
+  mutate(across(class, ~ .x == "good")) %>%
+  mutate(across(.firstnonmetacolumn:ncol(data_clean), ~ scale(.x)))
+```
+
+# Important features identification
+
+## Regularized regression
+
+split the data
+
+```{r}
+.no_folds <- 10
+.split_prop <- 4 / 5
+
+data_split <- initial_split(data_clean, strata = class, prop = .split_prop)
+training_set <- training(data_split)
+testing_set <- testing(data_split)
+
+folds <- vfold_cv(training_set, .no_folds)
+```
+
+recipe
+
+```{r}
+lin_formula <- reformulate(colnames(data_clean)[17:77], "class")
+lin_rec <- recipe(lin_formula, data = training_set) %>%
+  # step_corr(all_predictors()) %>%
+  step_normalize(all_predictors())
+
+lin_wf_base <- workflow() %>% add_recipe(lin_rec)
+```
+
+tuning
+
+```{r}
+lin_wf <- lin_wf_base %>%
+  add_model(logistic_reg(
+    mode = "classification", engine = "glmnet",
+    penalty = tune(), mixture = tune()
+  ))
+
+tune_grid <- grid_regular(
+  penalty(), mixture(),
+  levels = c(penalty = 21, mixture = 11)
+)
+
+tune_rs <- tune_grid(
+  lin_wf, folds,
+  grid = tune_grid,
+  metrics = metric_set(yardstick::accuracy, brier_class, roc_auc)
+)
+
+autoplot(tune_rs)
+
+choose_roc_auc <- tune_rs %>%
+  select_by_one_std_err(metric = "roc_auc", -mixture, penalty)
+choose_roc_auc
+```
+
+final
+
+```{r}
+lin_final_wf <- finalize_workflow(lin_wf, choose_roc_auc)
+lin_final_wf
+
+lin_final_fitted <- last_fit(lin_final_wf, data_split)
+
+collect_predictions(lin_final_fitted) %>%
+  conf_mat(truth = class, estimate = .pred_class)
+collect_predictions(lin_final_fitted) %>%
+  roc_curve(truth = class, .pred_bad) %>%
+  autoplot()
+
+extract_fit_parsnip(lin_final_fitted) %>%
+  vip::vi(lambda = choose_roc_auc$penalty) %>%
+  print(n = 80)
+
+lin_final_fitted %>%
+  extract_fit_parsnip() %>%
+  tidy() %>%
+  arrange(estimate) %>%
+  print(n = 80)
+```
+
+## Individual regressions
+
+```{r}
+feature_importances <- tibble(
+  feat_name = character(),
+  p_value = numeric(),
+  estimate = numeric(),
+  wilcox_p = numeric(),
+  wilcox_r = numeric(),
+  kw_p = numeric(),
+  kw_epsilon2 = numeric()
+)
+
+for (i in .firstnonmetacolumn:ncol(data_clean)) {
+  fname <- names(data_clean)[i]
+
+  formula_single <- reformulate(fname, "class")
+  formula_single_reversed <- reformulate("class", fname)
+
+  glm_model <- glm(formula_single, data_clean, family = "binomial")
+  glm_coefficients <- summary(glm_model)$coefficients
+  row_index <- which(rownames(glm_coefficients) == fname)
+  p_value <- glm_coefficients[row_index, 4]
+  beta <- glm_coefficients[row_index, 1]
+
+  wilcox_p <- wilcox.test(formula_single_reversed, data_clean)$p.value
+  wilcox_r <- wilcox_effsize(data_clean, formula_single_reversed)$effsize[[1]]
+
+  kw_p <- kruskal.test(data_clean[[fname]], data_clean$class)$p.value
+  kw_epsilon2 <- epsilonSquared(data_clean[[fname]], data_clean$class)[[1]]
+
+  feature_importances <- feature_importances %>%
+    add_row(
+      feat_name = fname,
+      p_value = p_value,
+      estimate = beta,
+      wilcox_p = wilcox_p,
+      wilcox_r = wilcox_r,
+      kw_p = kw_p,
+      kw_epsilon2 = kw_epsilon2
+    )
+}
+feature_importances
+
+selected_features <- feature_importances %>%
+  mutate(
+    selected = p_value <= 0.05,
+    wilcox_sel = wilcox_p < 0.05,
+    kw_sel = kw_p < 0.05
+  )
+
+selected_features %>%
+  select(selected, kw_sel) %>%
+  table()
+
+cor(-log(selected_features$p_value), selected_features$kw_epsilon2)
+cor(-log(selected_features$p_value), -log(selected_features$kw_p))
+cor(selected_features$estimate, selected_features$kw_epsilon2)
+
+selected_features %>%
+  ggplot(aes(x = -log(p_value), y = kw_epsilon2, color = selected)) +
+  geom_point()
+
+selected_features %>%
+  ggplot(aes(x = -log(p_value), y = -log(kw_p), color = selected)) +
+  geom_point()
+
+selected_features_names <- selected_features %>%
+  filter(selected) %>%
+  pull(feat_name)
+```
+
+## Compare the two
+
+```{r}
+featcomp <- extract_fit_parsnip(lin_final_fitted) %>%
+  vip::vi(lambda = choose_roc_auc$penalty) %>%
+  full_join(
+    selected_features %>% rename(Variable = feat_name),
+    by = "Variable"
+  ) %>%
+  rename(selected_pval = selected) %>%
+  mutate(
+    log_p = -log(p_value),
+    log_wilcox_p = -log(wilcox_p),
+    log_kw_p = -log(kw_p),
+    selected_reg = Importance > 0
+  )
+
+featcomp %>%
+  filter(!is.na(Importance)) %>%
+  select(Importance, kw_epsilon2, log_p, log_kw_p) %>%
+  cor() %>%
+  round(2)
+
+featcomp_plot <- featcomp %>% ggplot(aes(
+  x = kw_epsilon2,
+  y = Importance,
+  # size = log_p,
+  color = kw_sel,
+  shape = selected_reg
+)) +
+  geom_point() +
+  labs(
+    title = "Feature importance measures",
+    subtitle = "All features",
+    # subtitle = "Features with |r| < 0.90",
+    x = "Effect size (epsilon^2)",
+    y = paste0(c(
+      "Regularized regression importance (mixture = ",
+      choose_roc_auc$mixture[1], ", penalty = ",
+      choose_roc_auc$penalty[1], ")"
+    ), collapse = ""),
+    # size = "-log(p-value)",
+    color = "KW p-value < .05",
+    shape = "Importance > 0"
+  )
+print(featcomp_plot)
+ggsave("featcomp_all.png")
+# ggsave("featcomp_nocorr.png")
+```
