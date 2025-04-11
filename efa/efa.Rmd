@@ -174,7 +174,7 @@ data_clean <- data_no_nas %>%
     RulePredObjDistance,
     RuleInfVerbDistance
   ), ~ .x / sent_count)) %>%
-  # remove variables identified as "u counts"
+  # remove variables identified as text-length dependent
   select(!c(
     RuleTooFewVerbs,
     RuleTooManyNegations,
@@ -193,13 +193,18 @@ data_clean <- data_no_nas %>%
     RuleWrongValencyCase,
     RuleWrongVerbonominalCase
   )) %>%
+  # remove further variables belonging to the 'acceptability' category
+  select(!c(RuleIncompleteConjunction)) %>%
   # remove artificially limited variables
   select(!c(
     RuleCaseRepetition.max_repetition_frac,
     RuleCaseRepetition.max_repetition_frac.v
   )) %>%
-  # remove further variables belonging to the 'acceptability' category
-  select(!c(RuleIncompleteConjunction)) %>%
+  # remove variables with too many NAs
+  select(!c(
+    RuleDoubleAdpos.max_allowable_distance,
+    RuleDoubleAdpos.max_allowable_distance.v
+  )) %>%
   mutate(across(c(
     class,
     FileFormat,
@@ -435,7 +440,7 @@ set.seed(42)
 # produces ultra-Heywood cases when nfactors = 9
 fa_1 <- fa(
   data_scaled,
-  nfactors = 8,
+  nfactors = 9,
   fm = "pa",
   rotate = "promax",
   oblique.scores = TRUE,
@@ -471,18 +476,16 @@ fa_1$complexity[fa_1$complexity > 2] %>% names()
 data_engineered_1 <- data_scaled %>%
   # remove low-communality variables
   select(!c(
-    doubleADPdist.m,
-    doubleADPdist.v,
     literary,
     compoundVERBsdist.m,
     compoundVERBsdist.v,
     predobjdist.m,
     predobjdist.v,
+    predsubjdist.m,
     predsubjdist.v,
     VERBfrac.v,
     NEGfrac.m,
-    NOUNcount.v,
-    entropy.v
+    NOUNcount.v
   )) %>%
   # remove confound variables
   select(!c(cli, fkgl, fre))
@@ -506,7 +509,7 @@ set.seed(42)
 
 fa_2 <- fa(
   data_engineered_1,
-  nfactors = 5,
+  nfactors = 6,
   fm = "pa",
   rotate = "promax",
   oblique.scores = TRUE,
@@ -542,19 +545,15 @@ fa_2$complexity[fa_2$complexity > 2] %>% names()
 data_engineered_2 <- data_engineered_1 %>%
   # remove low-communality features
   select(!c(
-    passives,
     predorder.v,
-    obj,
-    predsubjdist.m
+    entropy.v
   ))
 
 det(cor(data_engineered_2))
 KMO(data_engineered_2)
-
-final_collist <- data_engineered_2 %>% colnames()
 ```
 
-# Final FA
+# Third FA
 
 ## No. of vectors
 
@@ -567,8 +566,70 @@ fa.parallel(data_engineered_2, fm = "pa", fa = "fa", n.iter = 20)
 ```{r}
 set.seed(42)
 
-fa_res <- fa(
+fa_3 <- fa(
   data_engineered_2,
+  nfactors = 5,
+  fm = "pa",
+  rotate = "promax",
+  oblique.scores = TRUE,
+  scores = "tenBerge",
+  n.iter = 100
+)
+fa_3
+```
+
+### Healthiness diagnostics
+
+```{r}
+fa_3$loadings[] %>%
+  as_tibble() %>%
+  mutate(feat = colnames(data_engineered_2)) %>%
+  select(feat, everything()) %>%
+  pivot_longer(!feat) %>%
+  mutate(value = abs(value)) %>%
+  group_by(feat) %>%
+  summarize(maxload = max(value)) %>%
+  arrange(maxload)
+
+fa_3$communality %>% sort()
+fa_3$communality[fa_3$communality < 0.5] %>% names()
+
+fa_3$complexity %>% sort()
+fa_3$complexity[fa_3$complexity > 2] %>% names()
+```
+
+## Feature engineering
+
+```{r}
+data_engineered_3 <- data_engineered_2 %>%
+  # remove low-communality features
+  select(!c(
+    passives,
+    obj
+  ))
+
+det(cor(data_engineered_3))
+KMO(data_engineered_3)
+
+final_collist <- data_engineered_3 %>% colnames()
+```
+
+
+# Final FA
+
+## No. of vectors
+
+```{r}
+fa.parallel(data_engineered_3, fm = "pa", fa = "fa", n.iter = 20)
+```
+
+## Model
+
+```{r}
+set.seed(42)
+
+fa_res <- fa(
+  data_engineered_3,
   nfactors = 5,
   fm = "pa",
   rotate = "promax",
@@ -584,7 +645,7 @@ fa_res
 ```{r}
 fa_res$loadings[] %>%
   as_tibble() %>%
-  mutate(feat = colnames(data_engineered_2)) %>%
+  mutate(feat = colnames(data_engineered_3)) %>%
   select(feat, everything()) %>%
   pivot_longer(!feat) %>%
   mutate(value = abs(value)) %>%
