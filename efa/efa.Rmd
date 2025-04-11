@@ -430,10 +430,12 @@ fa.parallel(data_scaled, fm = "pa", fa = "fa", n.iter = 20)
 <https://www.rdocumentation.org/packages/psych/versions/2.5.3/topics/fa>
 
 ```{r}
+set.seed(42)
+
 # produces ultra-Heywood cases when nfactors = 9
 fa_1 <- fa(
   data_scaled,
-  nfactors = 9,
+  nfactors = 8,
   fm = "pa",
   rotate = "promax",
   oblique.scores = TRUE,
@@ -500,6 +502,8 @@ fa.parallel(data_engineered_1, fm = "pa", fa = "fa", n.iter = 20)
 ## Model
 
 ```{r}
+set.seed(42)
+
 fa_2 <- fa(
   data_engineered_1,
   nfactors = 5,
@@ -561,6 +565,8 @@ fa.parallel(data_engineered_2, fm = "pa", fa = "fa", n.iter = 20)
 ## Model
 
 ```{r}
+set.seed(42)
+
 fa_res <- fa(
   data_engineered_2,
   nfactors = 5,
