@@ -255,12 +255,15 @@ feature_importances <- tibble(
 for (i in .firstnonmetacolumn:ncol(data_clean)) {
   fname <- names(data_clean)[i]
 
-  formula_single <- reformulate(fname, "class")
+  # formula_single <- reformulate(fname, "class")
 
-  glm_model <- glm(formula_single, data_clean, family = "binomial")
-  glm_coefficients <- summary(glm_model)$coefficients
-  row_index <- which(rownames(glm_coefficients) == fname)
-  p_value <- glm_coefficients[row_index, 4]
+  # glm_model <- glm(formula_single, data_clean, family = "binomial")
+  # glm_coefficients <- summary(glm_model)$coefficients
+  # row_index <- which(rownames(glm_coefficients) == fname)
+  # p_value <- glm_coefficients[row_index, 4]
+
+  kw <- kruskal.test(data_clean[[i]], data_clean$class)
+  p_value <- kw$p.value
 
   feature_importances <- feature_importances %>%
     add_row(feat_name = fname, p_value = p_value)
@@ -456,10 +459,9 @@ fa.parallel(data_scaled, fm = "pa", fa = "fa", n.iter = 20)
 ```{r}
 set.seed(42)
 
-# produces ultra-Heywood cases when nfactors = 9
 fa_1 <- fa(
   data_scaled,
-  nfactors = 9,
+  nfactors = 8,
   fm = "pa",
   rotate = "promax",
   oblique.scores = TRUE,
@@ -496,6 +498,7 @@ data_engineered_1 <- data_scaled %>%
   # remove low-communality variables
   select(!c(
     literary,
+    sentlen.v,
     compoundVERBsdist.m,
     compoundVERBsdist.v,
     predobjdist.m,
@@ -528,7 +531,7 @@ set.seed(42)
 
 fa_2 <- fa(
   data_engineered_1,
-  nfactors = 6,
+  nfactors = 5,
   fm = "pa",
   rotate = "promax",
   oblique.scores = TRUE,
@@ -565,14 +568,15 @@ data_engineered_2 <- data_engineered_1 %>%
   # remove low-communality features
   select(!c(
     predorder.v,
-    entropy.v
+    passives,
+    obj
   ))
 
 det(cor(data_engineered_2))
 KMO(data_engineered_2)
 ```
 
-# Third FA
+# Final FA
 
 ## No. of vectors
 
@@ -583,72 +587,12 @@ fa.parallel(data_engineered_2, fm = "pa", fa = "fa", n.iter = 20)
 ## Model
 
 ```{r}
-set.seed(42)
+final_collist <- names(data_engineered_2)
 
-fa_3 <- fa(
-  data_engineered_2,
-  nfactors = 5,
-  fm = "pa",
-  rotate = "promax",
-  oblique.scores = TRUE,
-  scores = "tenBerge",
-  n.iter = 100
-)
-fa_3
-```
-
-### Healthiness diagnostics
-
-```{r}
-fa_3$loadings[] %>%
-  as_tibble() %>%
-  mutate(feat = colnames(data_engineered_2)) %>%
-  select(feat, everything()) %>%
-  pivot_longer(!feat) %>%
-  mutate(value = abs(value)) %>%
-  group_by(feat) %>%
-  summarize(maxload = max(value)) %>%
-  arrange(maxload)
-
-fa_3$communality %>% sort()
-fa_3$communality[fa_3$communality < 0.5] %>% names()
-
-fa_3$complexity %>% sort()
-fa_3$complexity[fa_3$complexity > 2] %>% names()
-```
-
-## Feature engineering
-
-```{r}
-data_engineered_3 <- data_engineered_2 %>%
-  # remove low-communality features
-  select(!c(
-    passives,
-    obj
-  ))
-
-det(cor(data_engineered_3))
-KMO(data_engineered_3)
-
-final_collist <- data_engineered_3 %>% colnames()
-```
-
-
-# Final FA
-
-## No. of vectors
-
-```{r}
-fa.parallel(data_engineered_3, fm = "pa", fa = "fa", n.iter = 20)
-```
-
-## Model
-
-```{r}
 set.seed(42)
 
 fa_res <- fa(
-  data_engineered_3,
+  data_engineered_2,
   nfactors = 5,
   fm = "pa",
   rotate = "promax",
@@ -664,7 +608,7 @@ fa_res
 ```{r}
 fa_res$loadings[] %>%
   as_tibble() %>%
-  mutate(feat = colnames(data_engineered_3)) %>%
+  mutate(feat = colnames(data_engineered_2)) %>%
   select(feat, everything()) %>%
   pivot_longer(!feat) %>%
   mutate(value = abs(value)) %>%
@@ -737,8 +681,8 @@ significant correlations (CIs not spanning over 0):
 
 - **PA1+PA2** (+0.10 / **+0.18** / +0.26): narrative texts tend to be slightly longer
   - strange? but the correlation isn't as strong
-- **PA2+PA5** (+0.00 / **+0.07** / +0.45): longer texts are more active
-  - PA2 behavior opposite to what one would expect
+- ~~**PA2+PA5** (+0.00 / **+0.07** / +0.45): longer texts are more active~~ not anymore
+  - ~~PA2 behavior opposite to what one would expect~~
 
 > **NOTE:** variables with low communalities are excluded from the analysis, yet still likely play a role in legal writing readability. this includes both those selected for the analysis and the excluded ones.
 >
@@ -791,7 +735,9 @@ analyze_distributions <- function(data_factors_long, variable) {
   }
 
   cat("\n")
-  print(data.frame(factor = factors, kruskal_p = p_val, epsilon2 = epsilon2), digits = 3)
+  print(data.frame(
+    factor = factors, kruskal_p = p_val, epsilon2 = epsilon2
+  ), digits = 3)
 
   cat(
     "\np < 5e-2 found in:",
