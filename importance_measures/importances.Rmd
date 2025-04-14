@@ -333,6 +333,9 @@ lin_final_fitted %>%
 ## Individual regressions
 
 ```{r}
+data_scaled <- data_clean %>%
+  mutate(across(all_of(.firstnonmetacolumn:ncol(data_clean)), ~ scale(.x)[, 1]))
+
 feature_importances <- tibble(
   feat_name = character(),
   p_value = numeric(),
@@ -340,26 +343,48 @@ feature_importances <- tibble(
   wilcox_p = numeric(),
   wilcox_r = numeric(),
   kw_p = numeric(),
-  kw_epsilon2 = numeric()
+  kw_chi2 = numeric(),
+  kw_epsilon2 = numeric(),
+  kw_epsilon2_lci = numeric(),
+  kw_epsilon2_uci = numeric(),
+  med_sign = numeric(),
+  mean_sign = numeric()
 )
 
-for (i in .firstnonmetacolumn:ncol(data_clean)) {
-  fname <- names(data_clean)[i]
+for (i in .firstnonmetacolumn:ncol(data_scaled)) {
+  fname <- names(data_scaled)[i]
+  message(fname)
 
   formula_single <- reformulate(fname, "class")
   formula_single_reversed <- reformulate("class", fname)
 
-  glm_model <- glm(formula_single, data_clean, family = "binomial")
+  glm_model <- glm(formula_single, data_scaled, family = "binomial")
   glm_coefficients <- summary(glm_model)$coefficients
   row_index <- which(rownames(glm_coefficients) == fname)
   p_value <- glm_coefficients[row_index, 4]
   beta <- glm_coefficients[row_index, 1]
 
-  wilcox_p <- wilcox.test(formula_single_reversed, data_clean)$p.value
-  wilcox_r <- wilcox_effsize(data_clean, formula_single_reversed)$effsize[[1]]
+  wilcox_p <- wilcox.test(formula_single_reversed, data_scaled)$p.value
+  wilcox_r <- wilcox_effsize(data_scaled, formula_single_reversed)$effsize[[1]]
 
-  kw_p <- kruskal.test(data_clean[[fname]], data_clean$class)$p.value
-  kw_epsilon2 <- epsilonSquared(data_clean[[fname]], data_clean$class)[[1]]
+  kw <- kruskal.test(data_scaled[[fname]], data_scaled$class)
+  kw_p <- kw$p.value
+  kw_chi2 <- kw$statistic[[1]]
+  kw_epsilon2_t <- epsilonSquared(
+    data_scaled[[fname]], data_scaled$class,
+    ci = TRUE
+  )
+  kw_epsilon2 <- kw_epsilon2_t[[1]]
+  kw_epsilon2_lci <- kw_epsilon2_t[[2]]
+  kw_epsilon2_uci <- kw_epsilon2_t[[3]]
+
+  med_good <- filter(data_scaled, class == "good")[[fname]] %>% median()
+  med_bad <- filter(data_scaled, class == "bad")[[fname]] %>% median()
+  med_sign <- sign(med_good - med_bad)
+
+  mean_good <- filter(data_scaled, class == "good")[[fname]] %>% mean()
+  mean_bad <- filter(data_scaled, class == "bad")[[fname]] %>% mean()
+  mean_sign <- sign(mean_good - mean_bad)
 
   feature_importances <- feature_importances %>%
     add_row(
@@ -369,7 +394,12 @@ for (i in .firstnonmetacolumn:ncol(data_clean)) {
       wilcox_p = wilcox_p,
       wilcox_r = wilcox_r,
       kw_p = kw_p,
-      kw_epsilon2 = kw_epsilon2
+      kw_chi2 = kw_chi2,
+      kw_epsilon2 = kw_epsilon2,
+      kw_epsilon2_uci = kw_epsilon2_uci,
+      kw_epsilon2_lci = kw_epsilon2_lci,
+      med_sign = med_sign,
+      mean_sign = mean_sign,
     )
 }
 feature_importances
@@ -390,12 +420,19 @@ cor(-log(selected_features$p_value), -log(selected_features$kw_p))
 cor(selected_features$estimate, selected_features$kw_epsilon2)
 
 selected_features %>%
-  ggplot(aes(x = -log(p_value), y = kw_epsilon2, color = selected)) +
-  geom_point()
+  ggplot(aes(
+    x = -log(p_value), y = kw_epsilon2,
+    ymin = kw_epsilon2_lci, ymax = kw_epsilon2_uci, color = selected
+  )) +
+  geom_point() +
+  geom_errorbar()
 
 selected_features %>%
-  ggplot(aes(x = -log(p_value), y = -log(kw_p), color = selected)) +
-  geom_point()
+  ggplot(aes(
+    x = -log(p_value), y = -log(kw_p), color = selected, label = feat_name
+  )) +
+  # geom_point() +
+  geom_text()
 
 selected_features_names <- selected_features %>%
   filter(selected) %>%
@@ -419,11 +456,19 @@ featcomp <- extract_fit_parsnip(lin_final_fitted) %>%
     selected_reg = Importance > 0
   )
 
+featcomp %>% write_csv("featcomp.csv")
+
 featcomp %>%
   filter(!is.na(Importance)) %>%
   select(Importance, kw_epsilon2, log_p, log_kw_p) %>%
   cor() %>%
   round(2)
+
+featcomp %>%
+  ggplot(aes(
+    x = kw_epsilon2, y = estimate, color = selected_pval, label = Variable
+  )) +
+  geom_text()
 
 featcomp_plot <- featcomp %>% ggplot(aes(
   x = kw_epsilon2,
@@ -450,4 +495,56 @@ featcomp_plot <- featcomp %>% ggplot(aes(
 print(featcomp_plot)
 ggsave("featcomp_all.png")
 # ggsave("featcomp_nocorr.png")
+```
+
+# Results
+
+```{r}
+featcomp %>%
+  filter(!kw_sel) %>%
+  select(Variable, kw_chi2, kw_p) %>%
+  arrange(Variable) %>%
+  as.data.frame() %>%
+  print(digits = 2)
+
+featcomp %>%
+  filter(kw_sel) %>%
+  mutate(signed_effect = kw_epsilon2 * mean_sign) %>%
+  select(Variable, kw_epsilon2, kw_p, signed_effect) %>%
+  arrange(-kw_epsilon2) %>%
+  as.data.frame() %>%
+  print(digits = 2)
+
+featcomp %>%
+  filter(kw_sel) %>%
+  select(
+    Variable,
+    kw_chi2,
+    kw_p,
+    kw_epsilon2_lci,
+    kw_epsilon2,
+    kw_epsilon2_uci,
+    mean_sign
+  ) %>%
+  arrange(-kw_epsilon2) %>%
+  print(n = 100)
+
+featcomp %>%
+  mutate(signed_effect = kw_epsilon2 * mean_sign) %>%
+  ggplot(aes(x = estimate, y = signed_effect, label = Variable)) +
+  geom_line(alpha = 0.25) +
+  geom_text(aes(color = kw_sel))
+
+featcomp %>%
+  mutate(
+    signed_effect = kw_epsilon2 * mean_sign,
+    signedlci = kw_epsilon2_lci * mean_sign,
+    signeduci = kw_epsilon2_uci * mean_sign
+  ) %>%
+  ggplot(aes(
+    x = estimate, y = signed_effect,
+    color = kw_sel, ymin = signedlci, ymax = signeduci
+  )) +
+  geom_point() +
+  geom_errorbar()
 ```

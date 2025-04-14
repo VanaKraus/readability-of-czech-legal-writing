@@ -1,6 +1,6 @@
 ---
 title: EFA
-output: pdf_document
+output: html_document
 ---
 
 ```{r}
@@ -21,6 +21,96 @@ library(paletteer) # color palettes
 library(conflicted) # to resolve QuantPsyc x dplyr conflicts
 conflict_prefer("select", "dplyr")
 conflict_prefer("filter", "dplyr")
+```
+
+# Helpers
+
+```{r}
+analyze_distributions <- function(data_factors_long, variable) {
+  print(table(data_factors_long[[variable]], useNA = "ifany"))
+
+  plot <- data_factors_long %>%
+    ggplot(aes(x = factor_score, y = !!sym(variable))) +
+    geom_boxplot() +
+    facet_grid(factor ~ .)
+  print(plot)
+
+  formula <- reformulate(variable, "factor_score")
+  factors <- levels(data_factors_long$factor)
+
+  p_val <- numeric()
+  epsilon2 <- numeric()
+  min_p_values <- numeric()
+  for (f in factors) {
+    data <- data_factors_long %>% filter(factor == f)
+
+    cat(
+      "\nTest for the significance of differences in",
+      variable, "over", f, ":\n\n"
+    )
+
+    kw <- kruskal.test(data$factor_score, data[[variable]])
+
+    dunn <- dunn.test(
+      data$factor_score, data[[variable]],
+      altp = TRUE, method = "bonferroni"
+    )
+
+    e2 <- epsilonSquared(data$factor_score, data[[variable]])
+    cat("epsilon2 = ", e2, "\n")
+
+    min_p_values <- c(min_p_values, min(dunn$altP.adjusted))
+    p_val <- c(p_val, kw$p.value)
+    epsilon2 <- c(epsilon2, e2)
+  }
+
+  cat("\n")
+  print(data.frame(
+    factor = factors, kruskal_p = p_val, epsilon2 = epsilon2
+  ), digits = 3)
+
+  cat(
+    "\np < 5e-2 found in:",
+    factors[min_p_values < 0.05],
+    "\np < 1e-2 found in:",
+    factors[min_p_values < 0.01],
+    "\np < 1e-3 found in:",
+    factors[min_p_values < 0.001],
+    "\np < 1e-4 found in:",
+    factors[min_p_values < 0.0001], "\n"
+  )
+}
+
+data_factor_bind <- function(data, fa_fit) {
+  data_factors <- bind_cols(data, fa_fit$scores %>% as.data.frame())
+  colnames(data_factors) <- prettify_feat_name_vector(colnames(data_factors))
+
+  fnames <- colnames(fa_fit$loadings)
+
+  data_factors_long <- data_factors %>%
+    pivot_longer(
+      any_of(fnames),
+      names_to = "factor", values_to = "factor_score"
+    ) %>%
+    mutate(across(
+      factor,
+      ~ factor(.x, levels = fnames)
+    )) %>%
+    select(
+      all_of(1:(.firstnonmetacolumn - 1)), factor, factor_score, everything()
+    )
+
+  data_factors_longer <- data_factors_long %>% pivot_longer(
+    all_of((.firstnonmetacolumn + 2):ncol(data_factors_long)),
+    names_to = "feat", values_to = "feat_value"
+  )
+
+  return(list(
+    data = data_factors,
+    long = data_factors_long,
+    feat_long = data_factors_longer
+  ))
+}
 ```
 
 # Load and tidy data
@@ -240,42 +330,17 @@ data_clean <- data_no_nas %>%
 # no NAs should be present now
 data_clean[!complete.cases(data_clean[.firstnonmetacolumn:ncol(data_clean)]), ]
 
-data_clean_scaled <- data_clean %>%
-  mutate(across(class, ~ .x == "good")) %>%
-  mutate(across(.firstnonmetacolumn:ncol(data_clean), ~ scale(.x)))
+colnames(data_clean) <- prettify_feat_name_vector(colnames(data_clean))
 ```
 
 # Important features identification
 
 ```{r}
-feature_importances <- tibble(
-  feat_name = character(), p_value = numeric()
-)
+feature_importances <- read_csv("../importance_measures/featcomp.csv")
 
-for (i in .firstnonmetacolumn:ncol(data_clean)) {
-  fname <- names(data_clean)[i]
-
-  # formula_single <- reformulate(fname, "class")
-
-  # glm_model <- glm(formula_single, data_clean, family = "binomial")
-  # glm_coefficients <- summary(glm_model)$coefficients
-  # row_index <- which(rownames(glm_coefficients) == fname)
-  # p_value <- glm_coefficients[row_index, 4]
-
-  kw <- kruskal.test(data_clean[[i]], data_clean$class)
-  p_value <- kw$p.value
-
-  feature_importances <- feature_importances %>%
-    add_row(feat_name = fname, p_value = p_value)
-}
-feature_importances
-
-selected_features <- feature_importances %>%
-  mutate(selected = p_value <= 0.05)
-selected_features %>% write_csv("selected_features.csv")
-selected_features_names <- selected_features %>%
-  filter(selected) %>%
-  pull(feat_name)
+selected_features_names <- feature_importances %>%
+  filter(kw_sel) %>%
+  pull(Variable)
 ```
 
 # Correlations
@@ -310,7 +375,11 @@ analyze_correlation <- function(data) {
   )
 }
 
-data_purish <- data_clean %>% select(any_of(selected_features_names))
+data_purish <- data_clean %>%
+  # remove readability metrics as they're conceptually different
+  # to the remaining features
+  select(!c(ari, cli, fkgl, fre, gf, smog)) %>%
+  select(any_of(selected_features_names))
 ```
 
 what unites the low-communality variables we threw out:
@@ -366,20 +435,14 @@ low_correlating_features <- analyze_correlation(data_pureish_striphigh)$
   filter(max_cor < .lcorrcutoff) %>%
   pull(feat1)
 
-feature_importances %>% filter(feat_name %in% low_correlating_features)
+feature_importances %>%
+  filter(Variable %in% low_correlating_features) %>%
+  pull(Variable)
 
 data_pure <- data_pureish_striphigh %>%
   select(!any_of(low_correlating_features))
 
-cnames <- map(
-  colnames(data_pure),
-  function(x) {
-    pull(pretty_names %>%
-      filter(name_orig == x), name_pretty)
-  }
-) %>% unlist()
-
-colnames(data_pure) <- cnames
+colnames(data_pure) <- prettify_feat_name_vector(colnames(data_pure))
 ```
 
 ## Visualisation
@@ -429,9 +492,205 @@ data_scaled <- data_pure %>%
 
 ```{r}
 mult.norm(data_scaled %>% as.data.frame())$mult.test
+mardia(data_scaled)
 ```
 
 Low (null) p-values show that we can reject the hypothesis that the data would be in a multivariate normal distribution. I.e. the distribution isn't multivariate normal.
+
+# Bad, yet broad FA
+
+## No. of vectors
+
+```{r}
+pdf("scree.pdf")
+fa.parallel(data_scaled, fm = "pa", fa = "fa", n.iter = 20)
+dev.off()
+```
+
+## Model
+
+```{r}
+set.seed(42)
+
+fa_broad <- fa(
+  data_scaled,
+  nfactors = 8,
+  fm = "pa",
+  rotate = "promax",
+  oblique.scores = TRUE,
+  scores = "tenBerge",
+  n.iter = 100
+)
+fa_broad
+```
+
+### Healthiness diagnostics
+
+```{r}
+fa_broad$loadings[] %>%
+  as_tibble() %>%
+  mutate(feat = colnames(data_scaled)) %>%
+  select(feat, everything()) %>%
+  pivot_longer(!feat) %>%
+  mutate(value = abs(value)) %>%
+  group_by(feat) %>%
+  summarize(maxload = max(value)) %>%
+  arrange(maxload)
+
+fa_broad$communality %>% sort()
+fa_broad$communality[fa_broad$communality < 0.5] %>% names()
+
+fa_broad$complexity %>% sort()
+fa_broad$complexity[fa_broad$complexity > 2] %>% names()
+```
+
+### Loadings
+
+Comrey and Lee (1992): loadings excelent > .70 > very good > .63 > good > .55 > fair > .45 > poor > .32
+
+```{r}
+fa.diagram(fa_broad)
+
+fa_broad$loadings
+
+for (i in 1:fa_broad$factors) {
+  cat("\n-----", colnames(fa_broad$loadings)[i], "-----\n")
+
+  loadings <- fa_broad$loadings[, i]
+  load_df <- data.frame(loading = loadings)
+
+  load_df_filtered <- load_df %>%
+    mutate(abs_l = abs(loading)) %>%
+    mutate(strng = case_when(
+      abs_l > 0.70 ~ "*****",
+      abs_l <= 0.70 & abs_l > 0.63 ~ "**** ",
+      abs_l <= 0.63 & abs_l > 0.55 ~ "***  ",
+      abs_l <= 0.55 & abs_l > 0.45 ~ "**   ",
+      abs_l <= 0.45 & abs_l > 0.32 ~ "*    ",
+      .default = ""
+    )) %>%
+    arrange(-abs_l) %>%
+    filter(abs_l > 0.1)
+
+  load_df_filtered %>%
+    mutate(across(c(loading, abs_l), ~ round(.x, 3))) %>%
+    print()
+
+  cat("\n")
+}
+```
+
+hypotheses:
+
+### Uniquenesses
+
+```{r}
+fa_broad$uniquenesses %>% round(3)
+```
+
+## Distributions over factors
+
+
+```{r, fig.height=8}
+broad_data <- data_factor_bind(data_clean, fa_broad)
+
+broad_data$long %>%
+  group_by(factor) %>%
+  summarize(shapiro = shapiro.test(factor_score)$p.value)
+
+broad_data$long %>%
+  ggplot(aes(x = factor_score, y = class)) +
+  facet_grid(factor ~ .) +
+  theme(legend.position = "bottom") +
+  geom_jitter(width = 0, height = 0.1, alpha = 0.2)
+```
+
+### class
+
+```{r}
+analyze_distributions(broad_data$long, "class")
+```
+
+### subcorpus
+
+```{r}
+analyze_distributions(broad_data$long, "subcorpus")
+```
+
+### subcorpus wo/ LiFRLaw
+
+```{r}
+analyze_distributions(
+  broad_data$long %>% filter(subcorpus != "LiFRLaw"), "subcorpus"
+)
+```
+
+### AuthorType
+
+```{r}
+analyze_distributions(broad_data$long, "AuthorType")
+```
+
+### RecipientType
+
+```{r}
+analyze_distributions(broad_data$long, "RecipientType")
+```
+
+court decisions often with `RecipientType = combined`.
+
+### RecipientIndividuation
+
+```{r}
+analyze_distributions(broad_data$long, "RecipientIndividuation")
+```
+
+### Objectivity
+
+```{r}
+analyze_distributions(broad_data$long, "Objectivity")
+```
+
+### Bindingness
+
+```{r}
+analyze_distributions(broad_data$long, "Bindingness")
+```
+
+## Feature-factor correlations
+
+```{r fig.height=9}
+broad_data_factors_corr <- broad_data$feat_long %>%
+  group_by(feat, factor) %>%
+  summarize(correlation = cor(feat_value, factor_score))
+
+broad_data_factors_corr %>%
+  filter(feat %in% rownames(fa_broad$loadings)) %>%
+  ggplot(aes(
+    x = factor,
+    y = feat,
+    fill = correlation,
+    label = round(correlation, 2)
+  )) +
+  geom_tile() +
+  geom_text() +
+  scale_fill_gradient2()
+```
+
+```{r fig.height=9}
+broad_data_factors_corr %>%
+  filter(!(feat %in% rownames(fa_broad$loadings))) %>%
+  ggplot(aes(
+    x = factor,
+    y = feat,
+    fill = correlation,
+    label = round(correlation, 2)
+  )) +
+  geom_tile() +
+  geom_text() +
+  scale_fill_gradient2()
+```
+
 
 # first FA
 
@@ -476,7 +735,7 @@ fa_1
 ```{r}
 fa_1$loadings[] %>%
   as_tibble() %>%
-  mutate(feat = cnames) %>%
+  mutate(feat = colnames(data_scaled)) %>%
   select(feat, everything()) %>%
   pivot_longer(!feat) %>%
   mutate(value = abs(value)) %>%
@@ -497,20 +756,11 @@ fa_1$complexity[fa_1$complexity > 2] %>% names()
 data_engineered_1 <- data_scaled %>%
   # remove low-communality variables
   select(!c(
-    literary,
-    sentlen.v,
-    compoundVERBsdist.m,
-    compoundVERBsdist.v,
-    predobjdist.m,
-    predobjdist.v,
-    predsubjdist.m,
-    predsubjdist.v,
-    VERBfrac.v,
-    NEGfrac.m,
-    NOUNcount.v
-  )) %>%
-  # remove confound variables
-  select(!c(cli, fkgl, fre))
+    sentlen.v, predsubjdist.m, predobjdist.m,
+    literary, NOUNcount.v, predobjdist.v,
+    compoundVERBsdist.m, VERBfrac.v, compoundVERBsdist.v,
+    predsubjdist.v, verbalNOUNs, NEGfrac.m
+  ))
 
 det(cor(data_engineered_1))
 KMO(data_engineered_1)
@@ -531,7 +781,7 @@ set.seed(42)
 
 fa_2 <- fa(
   data_engineered_1,
-  nfactors = 5,
+  nfactors = 6,
   fm = "pa",
   rotate = "promax",
   oblique.scores = TRUE,
@@ -568,15 +818,14 @@ data_engineered_2 <- data_engineered_1 %>%
   # remove low-communality features
   select(!c(
     predorder.v,
-    passives,
-    obj
+    atl
   ))
 
 det(cor(data_engineered_2))
 KMO(data_engineered_2)
 ```
 
-# Final FA
+# third FA
 
 ## No. of vectors
 
@@ -587,12 +836,187 @@ fa.parallel(data_engineered_2, fm = "pa", fa = "fa", n.iter = 20)
 ## Model
 
 ```{r}
-final_collist <- names(data_engineered_2)
+set.seed(42)
+
+fa_3 <- fa(
+  data_engineered_2,
+  nfactors = 5,
+  fm = "pa",
+  rotate = "promax",
+  oblique.scores = TRUE,
+  scores = "tenBerge",
+  n.iter = 100
+)
+fa_3
+```
+
+### Healthiness diagnostics
+
+```{r}
+fa_3$loadings[] %>%
+  as_tibble() %>%
+  mutate(feat = colnames(data_engineered_2)) %>%
+  select(feat, everything()) %>%
+  pivot_longer(!feat) %>%
+  mutate(value = abs(value)) %>%
+  group_by(feat) %>%
+  summarize(maxload = max(value)) %>%
+  arrange(maxload)
+
+fa_3$communality %>% sort()
+fa_3$communality[fa_3$communality < 0.5] %>% names()
+
+fa_3$complexity %>% sort()
+fa_3$complexity[fa_3$complexity > 2] %>% names()
+```
+
+## Feature engineering
+
+```{r}
+data_engineered_3 <- data_engineered_2 %>%
+  # remove low-communality features
+  select(!c(
+    passives
+  ))
+
+det(cor(data_engineered_3))
+KMO(data_engineered_3)
+```
+
+# fourth FA
+
+## No. of vectors
+
+```{r}
+fa.parallel(data_engineered_3, fm = "pa", fa = "fa", n.iter = 20)
+```
+
+## Model
+
+```{r}
+set.seed(42)
+
+fa_4 <- fa(
+  data_engineered_3,
+  nfactors = 5,
+  fm = "pa",
+  rotate = "promax",
+  oblique.scores = TRUE,
+  scores = "tenBerge",
+  n.iter = 100
+)
+fa_4
+```
+
+### Healthiness diagnostics
+
+```{r}
+fa_4$loadings[] %>%
+  as_tibble() %>%
+  mutate(feat = colnames(data_engineered_3)) %>%
+  select(feat, everything()) %>%
+  pivot_longer(!feat) %>%
+  mutate(value = abs(value)) %>%
+  group_by(feat) %>%
+  summarize(maxload = max(value)) %>%
+  arrange(maxload)
+
+fa_4$communality %>% sort()
+fa_4$communality[fa_4$communality < 0.5] %>% names()
+
+fa_4$complexity %>% sort()
+fa_4$complexity[fa_4$complexity > 2] %>% names()
+```
+
+## Feature engineering
+
+```{r}
+data_engineered_4 <- data_engineered_3 %>%
+  # remove low-communality features
+  select(!c(
+    subj
+  ))
+
+det(cor(data_engineered_4))
+KMO(data_engineered_4)
+```
+
+# fifth FA
+
+## No. of vectors
+
+```{r}
+fa.parallel(data_engineered_4, fm = "pa", fa = "fa", n.iter = 20)
+```
+
+## Model
+
+```{r}
+set.seed(42)
+
+fa_5 <- fa(
+  data_engineered_4,
+  nfactors = 5,
+  fm = "pa",
+  rotate = "promax",
+  oblique.scores = TRUE,
+  scores = "tenBerge",
+  n.iter = 100
+)
+fa_5
+```
+
+### Healthiness diagnostics
+
+```{r}
+fa_5$loadings[] %>%
+  as_tibble() %>%
+  mutate(feat = colnames(data_engineered_4)) %>%
+  select(feat, everything()) %>%
+  pivot_longer(!feat) %>%
+  mutate(value = abs(value)) %>%
+  group_by(feat) %>%
+  summarize(maxload = max(value)) %>%
+  arrange(maxload)
+
+fa_5$communality %>% sort()
+fa_5$communality[fa_5$communality < 0.5] %>% names()
+
+fa_5$complexity %>% sort()
+fa_5$complexity[fa_5$complexity > 2] %>% names()
+```
+
+## Feature engineering
+
+```{r}
+data_engineered_5 <- data_engineered_4 %>%
+  # remove low-communality features
+  select(!c(
+    compoundVERBs
+  ))
+
+det(cor(data_engineered_5))
+KMO(data_engineered_5)
+```
+
+
+# Final FA
+
+## No. of vectors
+
+```{r}
+fa.parallel(data_engineered_5, fm = "pa", fa = "fa", n.iter = 20)
+```
+
+## Model
+
+```{r}
+final_collist <- names(data_engineered_5)
 
 set.seed(42)
 
 fa_res <- fa(
-  data_engineered_2,
+  data_engineered_5,
   nfactors = 5,
   fm = "pa",
   rotate = "promax",
@@ -608,7 +1032,7 @@ fa_res
 ```{r}
 fa_res$loadings[] %>%
   as_tibble() %>%
-  mutate(feat = colnames(data_engineered_2)) %>%
+  mutate(feat = colnames(data_engineered_5)) %>%
   select(feat, everything()) %>%
   pivot_longer(!feat) %>%
   mutate(value = abs(value)) %>%
@@ -698,86 +1122,13 @@ fa_res$uniquenesses %>% round(3)
 ## Distributions over factors
 
 ```{r, fig.height=8}
-analyze_distributions <- function(data_factors_long, variable) {
-  plot <- data_factors_long %>%
-    ggplot(aes(x = factor_score, y = !!sym(variable))) +
-    geom_boxplot() +
-    facet_grid(factor ~ .)
-  print(plot)
+res_data <- data_factor_bind(data_clean, fa_res)
 
-  formula <- reformulate(variable, "factor_score")
-  factors <- levels(data_factors_long$factor)
-
-  p_val <- numeric()
-  epsilon2 <- numeric()
-  min_p_values <- numeric()
-  for (f in factors) {
-    data <- data_factors_long %>% filter(factor == f)
-
-    cat(
-      "\nTest for the significance of differences in",
-      variable, "over", f, ":\n\n"
-    )
-
-    kw <- kruskal.test(data$factor_score, data[[variable]])
-
-    dunn <- dunn.test(
-      data$factor_score, data[[variable]],
-      altp = TRUE, method = "bonferroni"
-    )
-
-    e2 <- epsilonSquared(data$factor_score, data[[variable]])
-    cat("epsilon2 = ", e2, "\n")
-
-    min_p_values <- c(min_p_values, min(dunn$altP.adjusted))
-    p_val <- c(p_val, kw$p.value)
-    epsilon2 <- c(epsilon2, e2)
-  }
-
-  cat("\n")
-  print(data.frame(
-    factor = factors, kruskal_p = p_val, epsilon2 = epsilon2
-  ), digits = 3)
-
-  cat(
-    "\np < 5e-2 found in:",
-    factors[min_p_values < 0.05],
-    "\np < 1e-2 found in:",
-    factors[min_p_values < 0.01],
-    "\np < 1e-3 found in:",
-    factors[min_p_values < 0.001],
-    "\np < 1e-4 found in:",
-    factors[min_p_values < 0.0001], "\n"
-  )
-}
-
-data_factors <- bind_cols(data_clean, fa_res$scores %>% as.data.frame())
-cnames <- map(
-  colnames(data_factors),
-  function(x) {
-    name <- pull(pretty_names %>%
-      filter(name_orig == x), name_pretty)
-    if (length(name) == 1) {
-      return(name)
-    } else {
-      return(x)
-    }
-  }
-) %>% unlist()
-colnames(data_factors) <- cnames
-
-data_factors_long <- data_factors %>%
-  pivot_longer(PA1:PA4, names_to = "factor", values_to = "factor_score") %>%
-  mutate(across(
-    factor,
-    ~ factor(.x, levels = c("PA1", "PA2", "PA5", "PA3", "PA4"))
-  ))
-
-data_factors_long %>%
+res_data$long %>%
   group_by(factor) %>%
   summarize(shapiro = shapiro.test(factor_score)$p.value)
 
-data_factors_long %>%
+res_data$long %>%
   ggplot(aes(x = factor_score, y = class)) +
   facet_grid(factor ~ .) +
   theme(legend.position = "bottom") +
@@ -787,33 +1138,33 @@ data_factors_long %>%
 ### class
 
 ```{r}
-analyze_distributions(data_factors_long, "class")
+analyze_distributions(res_data$long, "class")
 ```
 
 ### subcorpus
 
 ```{r}
-analyze_distributions(data_factors_long, "subcorpus")
+analyze_distributions(res_data$long, "subcorpus")
 ```
 
 ### subcorpus wo/ LiFRLaw
 
 ```{r}
 analyze_distributions(
-  data_factors_long %>% filter(subcorpus != "LiFRLaw"), "subcorpus"
+  res_data$long %>% filter(subcorpus != "LiFRLaw"), "subcorpus"
 )
 ```
 
 ### AuthorType
 
 ```{r}
-analyze_distributions(data_factors_long, "AuthorType")
+analyze_distributions(res_data$long, "AuthorType")
 ```
 
 ### RecipientType
 
 ```{r}
-analyze_distributions(data_factors_long, "RecipientType")
+analyze_distributions(res_data$long, "RecipientType")
 ```
 
 court decisions often with `RecipientType = combined`.
@@ -821,31 +1172,25 @@ court decisions often with `RecipientType = combined`.
 ### RecipientIndividuation
 
 ```{r}
-analyze_distributions(data_factors_long, "RecipientIndividuation")
+analyze_distributions(res_data$long, "RecipientIndividuation")
 ```
 
 ### Objectivity
 
 ```{r}
-analyze_distributions(data_factors_long, "Objectivity")
+analyze_distributions(res_data$long, "Objectivity")
 ```
 
 ### Bindingness
 
 ```{r}
-analyze_distributions(data_factors_long, "Bindingness")
+analyze_distributions(res_data$long, "Bindingness")
 ```
 
-# Feature-factor correlations
+## Feature-factor correlations
 
 ```{r}
-data_factors_longer <- data_factors_long %>%
-  pivot_longer(
-    abstractNOUNs:GPs,
-    names_to = "feat", values_to = "feat_value"
-  )
-
-data_factors_correlations <- data_factors_longer %>%
+data_factors_correlations <- res_data$feat_long %>%
   group_by(feat, factor) %>%
   summarize(correlation = cor(feat_value, factor_score))
 

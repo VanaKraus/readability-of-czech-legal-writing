@@ -1,0 +1,46 @@
+---
+output: pdf_document
+---
+
+```{r}
+library(tidyverse)
+
+data <- read_csv("featcomp.csv")
+
+p_show <- function(x) {
+  case_when(
+    x < 0.0001 ~ "< .0001",
+    x < 0.001 ~ "< .001",
+    x < 0.01 ~ "< .01",
+    x < 0.05 ~ "< .05",
+    .default = as.character(round(x, 2))
+  )
+}
+
+sign_show <- function(x) case_when(x < 0 ~ "-", x > 0 ~ "+", .default = "")
+
+data %>%
+  filter(kw_sel) %>%
+  select(
+    Variable, kw_chi2, kw_p, kw_epsilon2_lci,
+    kw_epsilon2, kw_epsilon2_uci, mean_sign
+  ) %>%
+  arrange(-kw_epsilon2) %>%
+  mutate(across(kw_chi2, ~ round(.x, 2))) %>%
+  mutate(across(kw_p, p_show)) %>%
+  mutate(across(mean_sign, sign_show)) %>%
+  mutate(across(
+    c(kw_epsilon2_lci, kw_epsilon2, kw_epsilon2_uci), ~ round(.x, 3)
+  )) %>%
+  write_tsv("table_selected.tsv")
+
+data %>%
+  filter(!kw_sel) %>%
+  select(
+    Variable, kw_chi2, kw_p
+  ) %>%
+  arrange(str_to_lower(Variable)) %>%
+  mutate(across(kw_chi2, ~ round(.x, 2))) %>%
+  mutate(across(kw_p, p_show)) %>%
+  write_tsv("table_rejected.tsv")
+```
