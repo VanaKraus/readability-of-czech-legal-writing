@@ -27,20 +27,28 @@ conflict_prefer("filter", "dplyr")
 
 ```{r}
 analyze_distributions <- function(data_factors_long, variable) {
-  print(table(data_factors_long[[variable]], useNA = "ifany"))
+  factors <- levels(data_factors_long$factor)
+
+  print(table(data_factors_long[[variable]], useNA = "ifany") / length(factors))
 
   plot <- data_factors_long %>%
     ggplot(aes(x = factor_score, y = !!sym(variable))) +
     geom_boxplot() +
-    facet_grid(factor ~ .)
+    facet_grid(factor ~ .) +
+    labs(x = "factor score") +
+    theme_bw()
+  ggsave(paste(c("distr", variable, ".pdf"), collapse = ""))
   print(plot)
 
-  formula <- reformulate(variable, "factor_score")
-  factors <- levels(data_factors_long$factor)
+  # formula <- reformulate(variable, "factor_score")
 
+  chi2 <- numeric()
   p_val <- numeric()
   epsilon2 <- numeric()
+  epsilon2_lci <- numeric()
+  epsilon2_uci <- numeric()
   min_p_values <- numeric()
+
   for (f in factors) {
     data <- data_factors_long %>% filter(factor == f)
 
@@ -56,18 +64,42 @@ analyze_distributions <- function(data_factors_long, variable) {
       altp = TRUE, method = "bonferroni"
     )
 
-    e2 <- epsilonSquared(data$factor_score, data[[variable]])
-    cat("epsilon2 = ", e2, "\n")
+    e2_test <- epsilonSquared(data$factor_score, data[[variable]], ci = TRUE)
+
+    e2 <- e2_test[[1]]
+    e2_lci <- e2_test[[2]]
+    e2_uci <- e2_test[[3]]
+    cat("epsilon2 = ", e2, "(95% CI:", e2_lci, "-", e2_uci, ")\n")
 
     min_p_values <- c(min_p_values, min(dunn$altP.adjusted))
+    chi2 <- c(chi2, kw$statistic[[1]])
     p_val <- c(p_val, kw$p.value)
     epsilon2 <- c(epsilon2, e2)
+    epsilon2_lci <- c(epsilon2_lci, e2_lci)
+    epsilon2_uci <- c(epsilon2_uci, e2_uci)
   }
 
   cat("\n")
-  print(data.frame(
-    factor = factors, kruskal_p = p_val, epsilon2 = epsilon2
-  ), digits = 3)
+  print(
+    data.frame(
+      factor = factors,
+      chi2 = chi2,
+      kruskal_p = p_val,
+      epsilon2_lci = epsilon2_lci,
+      epsilon2 = epsilon2,
+      epsilon2_uci = epsilon2_uci
+    ) %>% mutate(
+      across(c(epsilon2, epsilon2_lci, epsilon2_uci), ~ round(.x, 3))
+    ) %>%
+      mutate(across(kruskal_p, ~ case_when(
+        .x < 0.0001 ~ "< 0.0001",
+        .x < 0.001 ~ "< 0.001",
+        .x < 0.01 ~ "< 0.01",
+        .x < 0.05 ~ "< 0.05",
+        .default = as.character(round(.x, 2))
+      ))) %>%
+      mutate(across(chi2, ~ round(.x, 2)))
+  )
 
   cat(
     "\np < 5e-2 found in:",
@@ -497,7 +529,7 @@ mardia(data_scaled)
 
 Low (null) p-values show that we can reject the hypothesis that the data would be in a multivariate normal distribution. I.e. the distribution isn't multivariate normal.
 
-# Bad, yet broad FA
+# Good and broad FA!
 
 ## No. of vectors
 
@@ -688,7 +720,10 @@ broad_data_factors_corr %>%
   )) +
   geom_tile() +
   geom_text() +
-  scale_fill_gradient2()
+  scale_fill_gradient2() +
+  labs(x = "factors", y = "variables") +
+  theme_minimal()
+ggsave("varfactcorr.pdf")
 ```
 
 
@@ -1138,33 +1173,33 @@ res_data$long %>%
 ### class
 
 ```{r}
-analyze_distributions(res_data$long, "class")
+# analyze_distributions(res_data$long, "class")
 ```
 
 ### subcorpus
 
 ```{r}
-analyze_distributions(res_data$long, "subcorpus")
+# analyze_distributions(res_data$long, "subcorpus")
 ```
 
 ### subcorpus wo/ LiFRLaw
 
 ```{r}
-analyze_distributions(
-  res_data$long %>% filter(subcorpus != "LiFRLaw"), "subcorpus"
-)
+# analyze_distributions(
+#   res_data$long %>% filter(subcorpus != "LiFRLaw"), "subcorpus"
+# )
 ```
 
 ### AuthorType
 
 ```{r}
-analyze_distributions(res_data$long, "AuthorType")
+# analyze_distributions(res_data$long, "AuthorType")
 ```
 
 ### RecipientType
 
 ```{r}
-analyze_distributions(res_data$long, "RecipientType")
+# analyze_distributions(res_data$long, "RecipientType")
 ```
 
 court decisions often with `RecipientType = combined`.
@@ -1172,19 +1207,19 @@ court decisions often with `RecipientType = combined`.
 ### RecipientIndividuation
 
 ```{r}
-analyze_distributions(res_data$long, "RecipientIndividuation")
+# analyze_distributions(res_data$long, "RecipientIndividuation")
 ```
 
 ### Objectivity
 
 ```{r}
-analyze_distributions(res_data$long, "Objectivity")
+# analyze_distributions(res_data$long, "Objectivity")
 ```
 
 ### Bindingness
 
 ```{r}
-analyze_distributions(res_data$long, "Bindingness")
+# analyze_distributions(res_data$long, "Bindingness")
 ```
 
 ## Feature-factor correlations
