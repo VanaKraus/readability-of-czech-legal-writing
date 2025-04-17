@@ -15,13 +15,29 @@ library(e1071)
 # Helpers
 
 ```{r}
-train_svm <- function(training_set, testing_set, columns) {
+train_svm <- function(
+    training_set,
+    testing_set,
+    columns,
+    kernel = "radial",
+    gamma = if (is.vector(training_set)) 1 else 1 / ncol(training_set),
+    cost = 1) {
   model <- svm(
     training_set[columns],
     training_set$class,
-    kernel = "radial", type = "C-classification",
-    probability = TRUE
+    kernel = kernel, type = "C-classification",
+    gamma = gamma,
+    cost = cost,
+    probability = TRUE,
+    cross = 10
   )
+
+  if (is.null(testing_set)) {
+    return(list(
+      model = model
+    ))
+  }
+
   pred <- predict(model, testing_set[columns], probability = TRUE)
   set_with_preds <- testing_set %>%
     mutate(
@@ -122,7 +138,10 @@ plot_outlier <- function(doc_name, variable_importances, dataset) {
     ) %>%
     mutate(across(value, ~ .x[, 1]))
 
-  cat(nrow(dmut %>% filter(value > 5)), "observation(s) removed from the plot\n")
+  cat(
+    nrow(dmut %>% filter(value > 5)),
+    "observation(s) removed from the plot\n"
+  )
   dmutf <- dmut %>% filter(value <= 5)
 
   dmutf %>%
@@ -375,45 +394,212 @@ selected_features_names <- feature_importances %>%
 # Formulas
 
 ```{r}
-columns_all <- (.firstnonmetacolumn + 1):ncol(data_stratified)
+columns_all <- colnames(data_stratified)[
+  (.firstnonmetacolumn + 1):ncol(data_stratified)
+]
 columns_readabilty_forms <- c("ari", "cli", "fkgl", "fre", "gf", "smog")
+
+correlating90 <- findCorrelation(
+  cor(data_stratified[columns_all]),
+  cutoff = 0.9, verbose = TRUE, names = TRUE
+)
+
+columns_notcorrelating90 <- c()
+for (col in columns_all) {
+  if (!(col %in% correlating90)) {
+    columns_notcorrelating90 <- c(columns_notcorrelating90, col)
+  }
+}
+
+correlating85 <- findCorrelation(
+  cor(data_stratified[columns_all]),
+  cutoff = 0.85, verbose = TRUE, names = TRUE
+)
+
+columns_notcorrelating85 <- c()
+for (col in columns_all) {
+  if (!(col %in% correlating85)) {
+    columns_notcorrelating85 <- c(columns_notcorrelating85, col)
+  }
+}
+
+correlating75 <- findCorrelation(
+  cor(data_stratified[columns_all]),
+  cutoff = 0.75, verbose = TRUE, names = TRUE
+)
+
+columns_notcorrelating75 <- c()
+for (col in columns_all) {
+  if (!(col %in% correlating75)) {
+    columns_notcorrelating75 <- c(columns_notcorrelating75, col)
+  }
+}
+```
+
+# Hyperparameters
+
+```{r}
+colsids <- c(
+  "all", "notcorrelating90",
+  "notcorrelating85", "notcorrelating75"
+)
+colsets <- list(
+  columns_all, columns_notcorrelating90,
+  columns_notcorrelating85, columns_notcorrelating75
+)
 ```
 
 # Splits and folds
 
 ```{r}
-.splitprop <- 4 / 5
+.splitprop <- 3 / 4
 
-mods_all <- list()
+split <- initial_split(data_stratified, .splitprop, strata = strata)
 
-for (i in 1:10) {
-  split <- initial_split(data_stratified, prop = .splitprop, strata = strata)
+training_set <- training(split)
+testing_set <- testing(split)
 
-  training_set <- training(split)
-  testing_set <- testing(split)
+training_set %>%
+  select(class) %>%
+  table()
+testing_set %>%
+  select(class) %>%
+  table()
 
-  training_set %>%
-    select(class) %>%
-    table()
-  training_set %>%
-    select(subcorpus, class) %>%
-    table()
+training_set %>%
+  select(subcorpus, class) %>%
+  table()
+testing_set %>%
+  select(subcorpus, class) %>%
+  table()
+```
 
-  testing_set %>%
-    select(class) %>%
-    table()
-  testing_set %>%
-    select(subcorpus, class) %>%
-    table()
+# Tune
 
-  mod_all <- train_svm(training_set, testing_set, columns_all)
-  mismatches_all <- get_mismatch_details(mod_all$prediction_set)
+```{r}
+tune_res <- tibble(
+  columns = character(),
+  kernel = character(),
+  gamma = numeric(),
+  cost = numeric(),
+  error = numeric(),
+  dispersion = numeric()
+)
 
-  mods_all[[length(mods_all) + 1]] <- list(
-    mod = mod_all,
-    mismatches = mismatches_all
+for (coli in seq_along(colsets)) {
+  colsid <- colsids[coli]
+  columns <- colsets[[coli]]
+
+  message("tune radial on ", colsid)
+  tune_radial <- tune.svm(training_set[columns], training_set$class,
+    gamma = 10^(-3:3),
+    cost = c(0.01, 0.1, 1, 10, 100, 1000),
+    kernel = "radial"
   )
+  tune_res <- tune_res %>%
+    bind_rows(tune_radial$performances %>%
+      mutate(kernel = "radial", columns = colsid))
+
+  message("tune polynomial3 on ", colsid)
+  tune_polynomial <- tune.svm(training_set[columns], training_set$class,
+    gamma = 10^(-3:3),
+    degree = 3,
+    cost = c(0.01, 0.1, 1, 10, 100, 1000),
+    kernel = "polynomial"
+  )
+  tune_res <- tune_res %>%
+    bind_rows(tune_polynomial$performances %>%
+      mutate(kernel = "polynomial3", columns = colsid))
+
+
+  message("tune polynomial4 on ", colsid)
+  tune_polynomial <- tune.svm(training_set[columns], training_set$class,
+    gamma = 10^(-3:3),
+    degree = 4,
+    cost = c(0.01, 0.1, 1, 10, 100, 1000),
+    kernel = "polynomial"
+  )
+  tune_res <- tune_res %>%
+    bind_rows(tune_polynomial$performances %>%
+      mutate(kernel = "polynomial4", columns = colsid))
+
+
+  message("tune polynomial5 on ", colsid)
+  tune_polynomial <- tune.svm(training_set[columns], training_set$class,
+    gamma = 10^(-3:3),
+    degree = 5,
+    cost = c(0.01, 0.1, 1, 10, 100, 1000),
+    kernel = "polynomial"
+  )
+  tune_res <- tune_res %>%
+    bind_rows(tune_polynomial$performances %>%
+      mutate(kernel = "polynomial5", columns = colsid))
+
+
+  message("tune sigmoid on ", colsid)
+  tune_sigmoid <- tune.svm(training_set[columns], training_set$class,
+    gamma = 10^(-3:3),
+    cost = c(0.01, 0.1, 1, 10, 100, 1000),
+    kernel = "sigmoid"
+  )
+  tune_res <- tune_res %>%
+    bind_rows(tune_sigmoid$performances %>%
+      mutate(kernel = "sigmoid", columns = colsid))
 }
 
-for (i in 1:10) print(mods_all[[i]]$mod$cm$overall["Accuracy"][[1]])
+tune_res %>% write_csv("tune_results.csv")
+# tune_res <- read_csv("tune_results.csv")
+
+tune_res %>%
+  arrange(error, -dispersion)
+
+tune_res %>%
+  filter(columns == "all") %>%
+  arrange(error, -dispersion)
+
+tune_res %>%
+  filter(str_detect(columns, "notcorrelating.*")) %>%
+  arrange(error, -dispersion)
+```
+
+```{r fig.width=12, fig.height=12, fig.align='center'}
+tune_res %>%
+  mutate(across(gamma, as.factor)) %>%
+  ggplot(aes(
+    x = cost, y = error, ymin = error - dispersion,
+    ymax = error + dispersion, color = gamma, fill = gamma
+  )) +
+  geom_point() +
+  geom_line() +
+  geom_ribbon(alpha = 0.1) +
+  scale_x_log10() +
+  facet_grid(kernel ~ columns) +
+  theme(legend.position = "bottom")
+```
+
+best:
+
+- columns: notcorrelating85
+- kernel: radial
+- gamma: 0.001
+- cost: 100
+
+# SVM
+
+```{r}
+model_all <- train_svm(
+  training_set, testing_set, columns_all, "radial",
+  gamma = 0.01, cost = 1
+)
+model_all$cm
+```
+
+# SVM readability formulas
+
+```{r}
+model_rf <- train_svm(
+  training_set, testing_set, columns_readabilty_forms, "radial",
+  gamma = 0.01, cost = 1
+)
+model_rf$cm
 ```
