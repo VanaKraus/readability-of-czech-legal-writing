@@ -1,0 +1,589 @@
+---
+title: Classifiers
+output: pdf_document
+---
+
+```{r init}
+set.seed(42)
+
+library(caret)
+library(party)
+library(tidyverse)
+library(tidymodels)
+```
+
+# Load and tidy data
+
+```{r load-and-tidy}
+pretty_names <- read_csv("../feat_name_mapping.csv")
+data <- read_csv("../measurements/measurements.csv")
+
+data_no_nas <- data %>%
+  select(!c(
+    fpath,
+    # KUK_ID,
+    # FileName,
+    FolderPath,
+    # subcorpus,
+    DocumentTitle,
+    ClarityPursuit,
+    Readability,
+    SyllogismBased,
+    SourceDB
+  )) %>%
+  # replace -1s in variation coefficients with NAs
+  mutate(across(c(
+    `RuleDoubleAdpos.max_allowable_distance.v`,
+    `RuleTooManyNegations.max_negation_frac.v`,
+    `RuleTooManyNegations.max_allowable_negations.v`,
+    `RuleTooManyNominalConstructions.max_noun_frac.v`,
+    `RuleTooManyNominalConstructions.max_allowable_nouns.v`,
+    `RuleCaseRepetition.max_repetition_count.v`,
+    `RuleCaseRepetition.max_repetition_frac.v`,
+    `RulePredSubjDistance.max_distance.v`,
+    `RulePredObjDistance.max_distance.v`,
+    `RuleInfVerbDistance.max_distance.v`,
+    `RuleMultiPartVerbs.max_distance.v`,
+    `RuleLongSentences.max_length.v`,
+    `RulePredAtClauseBeginning.max_order.v`,
+    `mattr.v`,
+    `maentropy.v`
+  ), ~ na_if(.x, -1))) %>%
+  # replace NAs with 0s
+  replace_na(list(
+    RuleGPcoordovs = 0,
+    RuleGPdeverbaddr = 0,
+    RuleGPpatinstr = 0,
+    RuleGPdeverbsubj = 0,
+    RuleGPadjective = 0,
+    RuleGPpatbenperson = 0,
+    RuleGPwordorder = 0,
+    RuleDoubleAdpos = 0,
+    RuleDoubleAdpos.max_allowable_distance = 0,
+    RuleDoubleAdpos.max_allowable_distance.v = 0,
+    RuleAmbiguousRegards = 0,
+    RuleReflexivePassWithAnimSubj = 0,
+    RuleTooManyNegations = 0,
+    RuleTooManyNegations.max_negation_frac = 0,
+    RuleTooManyNegations.max_negation_frac.v = 0,
+    RuleTooManyNegations.max_allowable_negations = 0,
+    RuleTooManyNegations.max_allowable_negations.v = 0,
+    RuleTooManyNominalConstructions.max_noun_frac.v = 0,
+    RuleTooManyNominalConstructions.max_allowable_nouns.v = 0,
+    RuleFunctionWordRepetition = 0,
+    RuleCaseRepetition.max_repetition_count.v = 0,
+    RuleCaseRepetition.max_repetition_frac.v = 0,
+    RuleWeakMeaningWords = 0,
+    RuleAbstractNouns = 0,
+    RuleRelativisticExpressions = 0,
+    RuleConfirmationExpressions = 0,
+    RuleRedundantExpressions = 0,
+    RuleTooLongExpressions = 0,
+    RuleAnaphoricReferences = 0,
+    RuleLiteraryStyle = 0,
+    RulePassive = 0,
+    RulePredSubjDistance = 0,
+    RulePredSubjDistance.max_distance = 0,
+    RulePredSubjDistance.max_distance.v = 0,
+    RulePredObjDistance = 0,
+    RulePredObjDistance.max_distance = 0,
+    RulePredObjDistance.max_distance.v = 0,
+    RuleInfVerbDistance = 0,
+    RuleInfVerbDistance.max_distance = 0,
+    RuleInfVerbDistance.max_distance.v = 0,
+    RuleMultiPartVerbs = 0,
+    RuleMultiPartVerbs.max_distance = 0,
+    RuleMultiPartVerbs.max_distance.v = 0,
+    RuleLongSentences.max_length.v = 0,
+    RulePredAtClauseBeginning.max_order.v = 0,
+    RuleVerbalNouns = 0,
+    RuleDoubleComparison = 0,
+    RuleWrongValencyCase = 0,
+    RuleWrongVerbonominalCase = 0,
+    RuleIncompleteConjunction = 0
+  ))
+
+data_clean <- data_no_nas %>%
+  # norm data expected to correlate with text length
+  mutate(across(c(
+    RuleGPcoordovs,
+    RuleGPdeverbaddr,
+    RuleGPpatinstr,
+    RuleGPdeverbsubj,
+    RuleGPadjective,
+    RuleGPpatbenperson,
+    RuleGPwordorder,
+    RuleDoubleAdpos,
+    RuleAmbiguousRegards,
+    RuleFunctionWordRepetition,
+    RuleWeakMeaningWords,
+    RuleAbstractNouns,
+    RuleRelativisticExpressions,
+    RuleConfirmationExpressions,
+    RuleRedundantExpressions,
+    RuleTooLongExpressions,
+    RuleAnaphoricReferences,
+    RuleLiteraryStyle,
+    RulePassive,
+    RuleVerbalNouns,
+    RuleDoubleComparison,
+    RuleWrongValencyCase,
+    RuleWrongVerbonominalCase,
+    RuleIncompleteConjunction,
+    num_hapax,
+    RuleReflexivePassWithAnimSubj,
+    RuleTooManyNominalConstructions,
+    RulePredSubjDistance,
+    RuleMultiPartVerbs,
+    RulePredAtClauseBeginning
+  ), ~ .x / word_count)) %>%
+  mutate(across(c(
+    RuleTooFewVerbs,
+    RuleTooManyNegations,
+    RuleCaseRepetition,
+    RuleLongSentences,
+    RulePredObjDistance,
+    RuleInfVerbDistance
+  ), ~ .x / sent_count)) %>%
+  # remove variables identified as "u counts"
+  select(!c(
+    RuleTooFewVerbs,
+    RuleTooManyNegations,
+    RuleTooManyNominalConstructions,
+    RuleCaseRepetition,
+    RuleLongSentences,
+    RulePredAtClauseBeginning,
+    syllab_count,
+    char_count
+  )) %>%
+  # remove variables identified as unreliable
+  select(!c(
+    RuleAmbiguousRegards,
+    RuleFunctionWordRepetition,
+    RuleDoubleComparison,
+    RuleWrongValencyCase,
+    RuleWrongVerbonominalCase
+  )) %>%
+  # remove artificially limited variables
+  select(!c(
+    RuleCaseRepetition.max_repetition_frac,
+    RuleCaseRepetition.max_repetition_frac.v
+  )) %>%
+  # remove further variables belonging to the 'acceptability' category
+  select(!c(RuleIncompleteConjunction)) %>%
+  unite("strata", c(subcorpus, class), sep = "_", remove = FALSE) %>%
+  mutate(across(c(class), ~ as.factor(.x)))
+
+# no NAs should be present now
+data_clean[!complete.cases(data_clean), ]
+
+.firstnonmetacolumn <- 18
+
+prettify_feat_name <- function(x) {
+  name <- pull(pretty_names %>%
+    filter(name_orig == x), name_pretty)
+  if (length(name) == 1) {
+    return(name)
+  } else {
+    return(x)
+  }
+}
+
+prettify_feat_name_vector <- function(x) {
+  map(
+    x,
+    prettify_feat_name
+  ) %>% unlist()
+}
+
+colnames(data_clean) <- prettify_feat_name_vector(colnames(data_clean))
+```
+
+# Filter for features identified as important
+
+This may not be necessary, as the identification was crucial to the EFA above all, so that features irrelevant for readability would not appear in the model. It may be useful to compare the importances of a model trained on all features and on a selected-feature model.
+
+```{r filter-important-features}
+selected_features_tibble <- read_csv("../efa/selected_features.csv") %>%
+  mutate(across(feat_name, prettify_feat_name_vector))
+
+formula_all <- reformulate(
+  selected_features_tibble %>% pull(feat_name), "class"
+)
+formula_selected <- reformulate(
+  selected_features_tibble %>% filter(selected) %>% pull(feat_name), "class"
+)
+```
+
+# Split and folds
+
+```{r split-and-folds}
+.split_prop <- 4 / 5
+.no_folds <- 10
+
+split <- data_clean %>% initial_split(prop = .split_prop, strata = strata)
+
+training_set <- training(split)
+testing_set <- testing(split)
+
+folds <- vfold_cv(training_set, v = .no_folds, strata = strata)
+
+nrow(training_set)
+training_set %>%
+  select(subcorpus, class) %>%
+  table()
+nrow(testing_set)
+testing_set %>%
+  select(subcorpus, class) %>%
+  table()
+```
+
+# Experimental model
+
+To familiarize myself with the library and CRFs.
+
+```{r experimental}
+training_split <- training_set %>%
+  initial_split(prop = .split_prop, strata = strata)
+train_subset <- training(training_split)
+devtest_subset <- testing(training_split)
+
+model_rf_exp <- cforest(
+  formula_selected,
+  data = train_subset, controls = cforest_control(ntree = 1000)
+)
+
+predictions_exp <- predict(model_rf_exp, newdata = devtest_subset)
+confusionMatrix(
+  predictions_exp, devtest_subset$class,
+  positive = "good", mode = "everything"
+)
+
+# computationally expensive
+# importances_exp <- varimp(model_rf_exp)
+
+# even more computationally expensive
+# cimportances_exp <- varimp(model_rf_exp, conditional = TRUE)
+```
+
+# MFV model
+
+```{r mfv}
+(nrow(data_clean %>% filter(class == "bad")) / nrow(data_clean)) %>%
+  round(3)
+(nrow(training_set %>% filter(class == "bad")) / nrow(training_set)) %>%
+  round(3)
+(nrow(testing_set %>% filter(class == "bad")) / nrow(testing_set)) %>%
+  round(3)
+```
+
+# Helpers
+
+```{r helpers}
+ntree_tune_levels <- 500 + 0:8 * 250
+
+tune_crf <- function(formula, folds, ntree_tune_levels) {
+  accuracy_column <- numeric()
+  ntree_column <- numeric()
+  fold_column <- numeric()
+
+  for (ntree_ in ntree_tune_levels) {
+    message(paste0(c("ntree_ ", ntree_), collapse = " "))
+    ctrl <- cforest_control(ntree = ntree_)
+
+    for (i in seq_len(nrow(folds))) {
+      alldata <- pull(folds[i, 1])[[1]]$data
+      trindices <- pull(folds[i, 1])[[1]]$in_id
+      trdata <- alldata[trindices, ]
+      tsdata <- alldata[-trindices, ]
+
+      model <- cforest(formula, data = trdata, controls = ctrl)
+      pred <- predict(model, newdata = tsdata)
+
+      cm <- confusionMatrix(pred, tsdata$class, positive = "good")
+
+      ntree_column <- c(ntree_column, ntree_)
+      fold_column <- c(fold_column, i)
+      accuracy_column <- c(accuracy_column, cm$overall["Accuracy"])
+    }
+  }
+
+  data.frame(
+    ntree = ntree_column,
+    fold = fold_column,
+    accuracy = accuracy_column
+  )
+}
+
+get_mismatch_details <- function(data_with_predictions) {
+  print(
+    data_with_predictions %>%
+      ggplot(aes(x = .prob, y = class, color = subcorpus)) +
+      geom_jitter(height = 0.2, width = 0)
+  )
+
+  cat("Confusion matrices by subcorpora:\n")
+  data_with_predictions %>%
+    select(.pred, class, subcorpus) %>%
+    table() %>%
+    print()
+
+  cat("\n")
+
+  deviations <- data_with_predictions %>%
+    filter(.pred != class) %>%
+    mutate(abs_dev = abs(.prob - 0.5)) %>%
+    arrange(-abs_dev)
+
+  cat("Greatest deviations:\n")
+  deviations %>%
+    select(abs_dev, .prob, class, subcorpus, FileName) %>%
+    mutate(across(c(.prob, abs_dev), ~ round(.x, 3))) %>%
+    print(n = round(nrow(data_with_predictions) / 5))
+
+  cat("Names of highest-deviating documents:\n")
+  highest_deviation_names <- deviations %>%
+    filter(abs_dev >= 0.25) %>%
+    arrange(-abs_dev) %>%
+    pull(FileName)
+
+  print(highest_deviation_names)
+
+  return(list(
+    deviations = deviations, highest_deviations = highest_deviation_names
+  ))
+}
+
+plot_outlier <- function(doc_name, variable_importances, dataset) {
+  important_variables <- sort(variable_importances) %>% tail(n = 9)
+  varnames <- names(important_variables)
+
+  dmut <- dataset %>%
+    select(KUK_ID, FileName, class, all_of(varnames)) %>%
+    mutate(across(all_of(varnames), ~ scale(.x))) %>%
+    pivot_longer(
+      all_of(varnames),
+      names_to = "feature", values_to = "value"
+    ) %>%
+    mutate(across(value, ~ .x[, 1]))
+
+  cat(nrow(dmut %>% filter(value > 5)), "observation(s) removed from the plot\n")
+  dmutf <- dmut %>% filter(value <= 5)
+
+  dmutf %>%
+    ggplot(aes(x = class, y = value)) +
+    facet_wrap(~feature) +
+    geom_boxplot() +
+    geom_point(
+      data = dmut %>% filter(FileName == doc_name), color = "red", size = 5
+    ) +
+    labs(y = "measurements (scaled)")
+}
+```
+
+# Selected-features model
+
+## Tune
+
+```{r sel-tune}
+tune_df_sel <- tune_crf(formula_selected, folds, ntree_tune_levels)
+
+tune_df_sel %>%
+  group_by(ntree) %>%
+  summarize(mean_acc = mean(accuracy), sd_acc = sd(accuracy))
+tune_df_sel %>%
+  group_by(fold) %>%
+  summarize(mean_acc = mean(accuracy), sd_acc = sd(accuracy))
+
+best_ntree_sel <- tune_df_sel %>%
+  group_by(ntree) %>%
+  summarize(mean_acc = mean(accuracy)) %>%
+  arrange(-mean_acc) %>%
+  head(n = 1) %>%
+  pull(ntree)
+```
+
+## Fit
+
+```{r sel-fit}
+model_crf_sel <- cforest(
+  formula_selected, training_set,
+  controls = cforest_control(ntree = best_ntree_sel)
+)
+
+predictions_sel_prob <- predict(
+  model_crf_sel,
+  newdata = testing_set, type = "prob"
+) %>%
+  map(function(x) x[1, 2]) %>%
+  unlist() %>%
+  as.vector()
+predictions_sel <- if_else(predictions_sel_prob > 0.5, "good", "bad") %>%
+  as.factor()
+
+confusionMatrix(
+  predictions_sel, testing_set$class,
+  positive = "good", mode = "everything"
+)
+cimportances_sel <- varimp(model_crf_sel, conditional = TRUE, nperm = 20)
+cimportances_sel %>%
+  sort() %>%
+  as.data.frame() %>%
+  print(digits = 3)
+cimportances_sel %>%
+  abs() %>%
+  sort(decreasing = TRUE) %>%
+  as.data.frame() %>%
+  print(digits = 3)
+
+testing_set_sel <- testing_set %>%
+  mutate(.prob = predictions_sel_prob, .pred = predictions_sel)
+```
+
+```{r sel-mismatches, fig.height=8}
+mismatches_sel <- get_mismatch_details(testing_set_sel)
+
+for (dev in mismatches_sel$highest_deviations) {
+  print(plot_outlier(dev, cimportances_sel, testing_set_sel) +
+    labs(title = "Top 9 most important feature values", subtitle = dev))
+}
+```
+
+# All-features model
+
+## Tune
+
+```{r all-tune}
+tune_df_all <- tune_crf(formula_all, folds, ntree_tune_levels)
+
+tune_df_all %>%
+  group_by(ntree) %>%
+  summarize(mean_acc = mean(accuracy), sd_acc = sd(accuracy))
+tune_df_all %>%
+  group_by(fold) %>%
+  summarize(mean_acc = mean(accuracy), sd_acc = sd(accuracy))
+
+best_ntree_all <- tune_df_all %>%
+  group_by(ntree) %>%
+  summarize(mean_acc = mean(accuracy)) %>%
+  arrange(-mean_acc) %>%
+  head(n = 1) %>%
+  pull(ntree)
+```
+
+## Fit
+
+```{r all-fit}
+model_crf_all <- cforest(
+  formula_all, training_set,
+  controls = cforest_control(ntree = best_ntree_all)
+)
+
+predictions_all_prob <- predict(
+  model_crf_all,
+  newdata = testing_set, type = "prob"
+) %>%
+  map(function(x) x[1, 2]) %>%
+  unlist() %>%
+  as.vector()
+predictions_all <- if_else(predictions_all_prob > 0.5, "good", "bad") %>%
+  as.factor()
+
+confusionMatrix(
+  predictions_all, testing_set$class,
+  positive = "good", mode = "everything"
+)
+cimportances_all <- varimp(model_crf_all, conditional = TRUE, nperm = 20)
+cimportances_all %>%
+  sort() %>%
+  as.data.frame() %>%
+  print(digits = 3)
+cimportances_all %>%
+  abs() %>%
+  sort(decreasing = TRUE) %>%
+  as.data.frame() %>%
+  print(digits = 3)
+
+testing_set_all <- testing_set %>%
+  mutate(.prob = predictions_all_prob, .pred = predictions_all)
+```
+
+```{r all-mismatches, fig.height=8}
+mismatches_all <- get_mismatch_details(testing_set_all)
+
+mismatches_all <- get_mismatch_details(testing_set_all)
+for (dev in mismatches_all$highest_deviations) {
+  print(plot_outlier(dev, cimportances_all, testing_set_all) +
+    labs(title = "Top 9 most important feature values", subtitle = dev))
+}
+```
+
+# Variable importance comparison
+
+```{r}
+glm_feature_importances <- tibble(
+  feat_name = character(), p_value_glm = numeric()
+)
+
+for (i in .firstnonmetacolumn:ncol(data_clean)) {
+  fname <- names(data_clean)[i]
+
+  formula_single <- reformulate(fname, "class")
+
+  glm_model <- glm(formula_single, data_clean, family = "binomial")
+  glm_coefficients <- summary(glm_model)$coefficients
+  row_index <- which(rownames(glm_coefficients) == fname)
+  p_value <- glm_coefficients[row_index, 4]
+
+  glm_feature_importances <- glm_feature_importances %>%
+    add_row(feat_name = fname, p_value_glm = p_value)
+}
+glm_feature_importances
+
+feature_importances <- glm_feature_importances %>%
+  full_join(
+    data.frame(
+      feat_name = names(cimportances_all) %>% prettify_feat_name_vector(),
+      imp_crf_all = as.vector(cimportances_all)
+    ),
+    by = "feat_name"
+  ) %>%
+  full_join(
+    data.frame(
+      feat_name = names(cimportances_sel) %>% prettify_feat_name_vector(),
+      imp_crf_sel = as.vector(cimportances_sel)
+    ),
+    by = "feat_name"
+  ) %>%
+  mutate(imp_crf_all_abs = abs(imp_crf_all), imp_crf_sel_abs = abs(imp_crf_sel))
+
+feature_importances %>%
+  select(feat_name, p_value_glm, imp_crf_all_abs, imp_crf_sel_abs) %>%
+  arrange(p_value_glm) %>%
+  as.data.frame() %>%
+  print(digits = 3)
+
+feature_importances %>%
+  select(feat_name, imp_crf_all, imp_crf_sel) %>%
+  arrange(imp_crf_all) %>%
+  as.data.frame() %>%
+  print(digits = 3)
+
+feature_importances %>%
+  ggplot(aes(
+    x = p_value_glm, y = imp_crf_all_abs, color = is.na(imp_crf_sel)
+  )) +
+  geom_point() +
+  scale_x_log10() +
+  scale_y_log10()
+
+feature_importances %>%
+  ggplot(aes(x = p_value_glm, y = imp_crf_sel_abs)) +
+  geom_point() +
+  scale_x_log10() +
+  scale_y_log10()
+
+feature_importances %>%
+  ggplot(aes(x = imp_crf_all, y = imp_crf_sel)) +
+  geom_point()
+```
