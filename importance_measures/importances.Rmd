@@ -130,16 +130,6 @@ data_no_nas <- data %>%
     RuleWrongVerbonominalCase = 0,
     RuleIncompleteConjunction = 0
   )) %>%
-  # replace NAs with medians
-  mutate(across(c(
-    RuleDoubleAdpos.max_allowable_distance,
-    RuleTooManyNegations.max_negation_frac,
-    RuleTooManyNegations.max_allowable_negations,
-    RulePredSubjDistance.max_distance,
-    RulePredObjDistance.max_distance,
-    RuleInfVerbDistance.max_distance,
-    RuleMultiPartVerbs.max_distance
-  ), ~ coalesce(., median(., na.rm = TRUE)))) %>%
   # merge GPs
   mutate(
     GPs = RuleGPcoordovs +
@@ -158,9 +148,7 @@ data_no_nas <- data %>%
     RuleGPadjective,
     RuleGPpatbenperson,
     RuleGPwordorder
-  ))
-
-data_clean <- data_no_nas %>%
+  )) %>%
   # norm data expected to correlate with text length
   mutate(across(c(
     GPs,
@@ -196,6 +184,18 @@ data_clean <- data_no_nas %>%
     RulePredObjDistance,
     RuleInfVerbDistance
   ), ~ .x / sent_count)) %>%
+  # replace NAs with medians
+  mutate(across(c(
+    RuleDoubleAdpos.max_allowable_distance,
+    RuleTooManyNegations.max_negation_frac,
+    RuleTooManyNegations.max_allowable_negations,
+    RulePredSubjDistance.max_distance,
+    RulePredObjDistance.max_distance,
+    RuleInfVerbDistance.max_distance,
+    RuleMultiPartVerbs.max_distance
+  ), ~ coalesce(., median(., na.rm = TRUE))))
+
+data_clean <- data_no_nas %>%
   # remove variables identified as text-length dependent
   select(!c(
     RuleTooFewVerbs,
@@ -241,7 +241,10 @@ data_clean <- data_no_nas %>%
   ), ~ as.factor(.x)))
 
 # no NAs should be present now
-data_clean[!complete.cases(data_clean[.firstnonmetacolumn:ncol(data_clean)]), ]
+data_clean[!complete.cases(
+  data_clean[.firstnonmetacolumn:ncol(data_clean)]
+), .firstnonmetacolumn:ncol(data_clean)] %>% as.data.frame()
+
 
 colnames(data_clean) <- prettify_feat_name_vector(colnames(data_clean))
 

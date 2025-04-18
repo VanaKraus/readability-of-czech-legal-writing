@@ -126,7 +126,7 @@ get_mismatch_details <- function(data_with_predictions) {
 }
 
 plot_outlier <- function(doc_name, variable_importances, dataset) {
-  important_variables <- sort(variable_importances) %>% tail(n = 9)
+  important_variables <- sort(variable_importances, decreasing = TRUE) %>% head(n = 16)
   varnames <- names(important_variables)
 
   dmut <- dataset %>%
@@ -136,7 +136,8 @@ plot_outlier <- function(doc_name, variable_importances, dataset) {
       all_of(varnames),
       names_to = "feature", values_to = "value"
     ) %>%
-    mutate(across(value, ~ .x[, 1]))
+    mutate(across(value, ~ .x[, 1])) %>%
+    mutate(across(feature, ~ factor(.x, levels = varnames)))
 
   cat(
     nrow(dmut %>% filter(value > 5)),
@@ -389,6 +390,11 @@ feature_importances <- read_csv("../importance_measures/featcomp.csv")
 selected_features_names <- feature_importances %>%
   filter(kw_sel) %>%
   pull(Variable)
+
+variable_importances <- feature_importances %>%
+  filter(kw_sel) %>%
+  pull(kw_epsilon2)
+names(variable_importances) <- selected_features_names
 ```
 
 # Formulas
@@ -486,69 +492,69 @@ tune_res <- tibble(
   dispersion = numeric()
 )
 
-for (coli in seq_along(colsets)) {
-  colsid <- colsids[coli]
-  columns <- colsets[[coli]]
+# for (coli in seq_along(colsets)) {
+#   colsid <- colsids[coli]
+#   columns <- colsets[[coli]]
 
-  message("tune radial on ", colsid)
-  tune_radial <- tune.svm(training_set[columns], training_set$class,
-    gamma = 10^(-3:3),
-    cost = c(0.01, 0.1, 1, 10, 100, 1000),
-    kernel = "radial"
-  )
-  tune_res <- tune_res %>%
-    bind_rows(tune_radial$performances %>%
-      mutate(kernel = "radial", columns = colsid))
+#   message("tune radial on ", colsid)
+#   tune_radial <- tune.svm(training_set[columns], training_set$class,
+#     gamma = 10^(-3:3),
+#     cost = c(0.01, 0.1, 1, 10, 100, 1000),
+#     kernel = "radial"
+#   )
+#   tune_res <- tune_res %>%
+#     bind_rows(tune_radial$performances %>%
+#       mutate(kernel = "radial", columns = colsid))
 
-  message("tune polynomial3 on ", colsid)
-  tune_polynomial <- tune.svm(training_set[columns], training_set$class,
-    gamma = 10^(-3:3),
-    degree = 3,
-    cost = c(0.01, 0.1, 1, 10, 100, 1000),
-    kernel = "polynomial"
-  )
-  tune_res <- tune_res %>%
-    bind_rows(tune_polynomial$performances %>%
-      mutate(kernel = "polynomial3", columns = colsid))
-
-
-  message("tune polynomial4 on ", colsid)
-  tune_polynomial <- tune.svm(training_set[columns], training_set$class,
-    gamma = 10^(-3:3),
-    degree = 4,
-    cost = c(0.01, 0.1, 1, 10, 100, 1000),
-    kernel = "polynomial"
-  )
-  tune_res <- tune_res %>%
-    bind_rows(tune_polynomial$performances %>%
-      mutate(kernel = "polynomial4", columns = colsid))
+#   message("tune polynomial3 on ", colsid)
+#   tune_polynomial <- tune.svm(training_set[columns], training_set$class,
+#     gamma = 10^(-3:3),
+#     degree = 3,
+#     cost = c(0.01, 0.1, 1, 10, 100, 1000),
+#     kernel = "polynomial"
+#   )
+#   tune_res <- tune_res %>%
+#     bind_rows(tune_polynomial$performances %>%
+#       mutate(kernel = "polynomial3", columns = colsid))
 
 
-  message("tune polynomial5 on ", colsid)
-  tune_polynomial <- tune.svm(training_set[columns], training_set$class,
-    gamma = 10^(-3:3),
-    degree = 5,
-    cost = c(0.01, 0.1, 1, 10, 100, 1000),
-    kernel = "polynomial"
-  )
-  tune_res <- tune_res %>%
-    bind_rows(tune_polynomial$performances %>%
-      mutate(kernel = "polynomial5", columns = colsid))
+#   message("tune polynomial4 on ", colsid)
+#   tune_polynomial <- tune.svm(training_set[columns], training_set$class,
+#     gamma = 10^(-3:3),
+#     degree = 4,
+#     cost = c(0.01, 0.1, 1, 10, 100, 1000),
+#     kernel = "polynomial"
+#   )
+#   tune_res <- tune_res %>%
+#     bind_rows(tune_polynomial$performances %>%
+#       mutate(kernel = "polynomial4", columns = colsid))
 
 
-  message("tune sigmoid on ", colsid)
-  tune_sigmoid <- tune.svm(training_set[columns], training_set$class,
-    gamma = 10^(-3:3),
-    cost = c(0.01, 0.1, 1, 10, 100, 1000),
-    kernel = "sigmoid"
-  )
-  tune_res <- tune_res %>%
-    bind_rows(tune_sigmoid$performances %>%
-      mutate(kernel = "sigmoid", columns = colsid))
-}
+#   message("tune polynomial5 on ", colsid)
+#   tune_polynomial <- tune.svm(training_set[columns], training_set$class,
+#     gamma = 10^(-3:3),
+#     degree = 5,
+#     cost = c(0.01, 0.1, 1, 10, 100, 1000),
+#     kernel = "polynomial"
+#   )
+#   tune_res <- tune_res %>%
+#     bind_rows(tune_polynomial$performances %>%
+#       mutate(kernel = "polynomial5", columns = colsid))
 
-tune_res %>% write_csv("tune_results.csv")
-# tune_res <- read_csv("tune_results.csv")
+
+#   message("tune sigmoid on ", colsid)
+#   tune_sigmoid <- tune.svm(training_set[columns], training_set$class,
+#     gamma = 10^(-3:3),
+#     cost = c(0.01, 0.1, 1, 10, 100, 1000),
+#     kernel = "sigmoid"
+#   )
+#   tune_res <- tune_res %>%
+#     bind_rows(tune_sigmoid$performances %>%
+#       mutate(kernel = "sigmoid", columns = colsid))
+# }
+
+# tune_res %>% write_csv("tune_results.csv")
+tune_res <- read_csv("tune_results.csv")
 
 tune_res %>%
   arrange(error, -dispersion)
@@ -579,19 +585,34 @@ tune_res %>%
 
 best:
 
-- columns: notcorrelating85
+- columns: all
 - kernel: radial
-- gamma: 0.001
-- cost: 100
+- gamma: 0.01
+- cost: 1
 
 # SVM
 
 ```{r}
+set.seed(42)
+
 model_all <- train_svm(
   training_set, testing_set, columns_all, "radial",
   gamma = 0.01, cost = 1
 )
 model_all$cm
+
+mismatches_all <- get_mismatch_details(model_all$prediction_set)
+```
+
+```{r fig.height=12, fig.width=10, fig.align='center'}
+for (doc in mismatches_all$highest_deviations) {
+  doc_row <- mismatches_all$deviations %>% filter(FileName == doc)
+  cat(paste(
+    doc, "/", doc_row["subcorpus"][[1]],
+    "/ dev:", doc_row["abs_dev"][[1]] %>% round(3), "\n"
+  ))
+  print(plot_outlier(doc, variable_importances, data_clean))
+}
 ```
 
 # SVM readability formulas

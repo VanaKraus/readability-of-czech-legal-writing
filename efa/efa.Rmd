@@ -1,6 +1,10 @@
 ---
 title: EFA
-output: html_document
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    code_folding: hide
 ---
 
 ```{r}
@@ -31,7 +35,15 @@ analyze_distributions <- function(data_factors_long, variable) {
 
   print(table(data_factors_long[[variable]], useNA = "ifany") / length(factors))
 
+  plot_all <- data_factors_long %>%
+    ggplot(aes(x = factor_score, y = !!sym(variable))) +
+    geom_boxplot() +
+    facet_grid(factor ~ .) +
+    labs(x = "factor score")
+  print(plot_all)
+
   plot <- data_factors_long %>%
+    drop_na(!!sym(variable)) %>%
     ggplot(aes(x = factor_score, y = !!sym(variable))) +
     geom_boxplot() +
     facet_grid(factor ~ .) +
@@ -249,16 +261,6 @@ data_no_nas <- data %>%
     RuleWrongVerbonominalCase = 0,
     RuleIncompleteConjunction = 0
   )) %>%
-  # replace NAs with medians
-  mutate(across(c(
-    RuleDoubleAdpos.max_allowable_distance,
-    RuleTooManyNegations.max_negation_frac,
-    RuleTooManyNegations.max_allowable_negations,
-    RulePredSubjDistance.max_distance,
-    RulePredObjDistance.max_distance,
-    RuleInfVerbDistance.max_distance,
-    RuleMultiPartVerbs.max_distance
-  ), ~ coalesce(., median(., na.rm = TRUE)))) %>%
   # merge GPs
   mutate(
     GPs = RuleGPcoordovs +
@@ -277,9 +279,7 @@ data_no_nas <- data %>%
     RuleGPadjective,
     RuleGPpatbenperson,
     RuleGPwordorder
-  ))
-
-data_clean <- data_no_nas %>%
+  )) %>%
   # norm data expected to correlate with text length
   mutate(across(c(
     GPs,
@@ -315,6 +315,18 @@ data_clean <- data_no_nas %>%
     RulePredObjDistance,
     RuleInfVerbDistance
   ), ~ .x / sent_count)) %>%
+  # replace NAs with medians
+  mutate(across(c(
+    RuleDoubleAdpos.max_allowable_distance,
+    RuleTooManyNegations.max_negation_frac,
+    RuleTooManyNegations.max_allowable_negations,
+    RulePredSubjDistance.max_distance,
+    RulePredObjDistance.max_distance,
+    RuleInfVerbDistance.max_distance,
+    RuleMultiPartVerbs.max_distance
+  ), ~ coalesce(., median(., na.rm = TRUE))))
+
+data_clean <- data_no_nas %>%
   # remove variables identified as text-length dependent
   select(!c(
     RuleTooFewVerbs,
@@ -417,7 +429,6 @@ data_purish <- data_clean %>%
 what unites the low-communality variables we threw out:
 
 - variations have little to do with any other variables in the dataset; there is no factor stemming from the remainder of the feature set to explain them
-- 
 
 ## High correlations
 
