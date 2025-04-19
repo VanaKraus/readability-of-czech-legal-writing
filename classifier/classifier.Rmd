@@ -87,11 +87,10 @@ train_glm <- function(training_set, testing_set, columns) {
 }
 
 get_mismatch_details <- function(data_with_predictions) {
-  print(
-    data_with_predictions %>%
-      ggplot(aes(x = prob_good, y = class, color = subcorpus)) +
-      geom_jitter(height = 0.2, width = 0)
-  )
+  plot <- data_with_predictions %>%
+    ggplot(aes(x = prob_good, y = class, color = subcorpus)) +
+    geom_jitter(height = 0.2, width = 0)
+  print(plot)
 
   cat("Confusion matrices by subcorpora:\n")
   data_with_predictions %>%
@@ -114,19 +113,22 @@ get_mismatch_details <- function(data_with_predictions) {
 
   cat("Names of highest-deviating documents:\n")
   highest_deviation_names <- deviations %>%
-    filter(abs_dev >= 0.25) %>%
+    filter(abs_dev >= 0.17) %>%
     arrange(-abs_dev) %>%
     pull(FileName)
 
   print(highest_deviation_names)
 
   return(list(
-    deviations = deviations, highest_deviations = highest_deviation_names
+    deviations = deviations,
+    highest_deviations = highest_deviation_names,
+    plot = plot
   ))
 }
 
 plot_outlier <- function(doc_name, variable_importances, dataset) {
-  important_variables <- sort(variable_importances, decreasing = TRUE) %>% head(n = 16)
+  important_variables <- sort(variable_importances, decreasing = TRUE) %>%
+    head(n = 16)
   varnames <- names(important_variables)
 
   dmut <- dataset %>%
@@ -145,7 +147,7 @@ plot_outlier <- function(doc_name, variable_importances, dataset) {
   )
   dmutf <- dmut %>% filter(value <= 5)
 
-  dmutf %>%
+  plot <- dmutf %>%
     ggplot(aes(x = class, y = value)) +
     facet_wrap(~feature) +
     geom_boxplot() +
@@ -153,6 +155,8 @@ plot_outlier <- function(doc_name, variable_importances, dataset) {
       data = dmut %>% filter(FileName == doc_name), color = "red", size = 5
     ) +
     labs(y = "measurements (scaled)")
+
+  return(plot)
 }
 ```
 
@@ -445,14 +449,16 @@ for (col in columns_all) {
 # Hyperparameters
 
 ```{r}
-colsids <- c(
-  "all", "notcorrelating90",
-  "notcorrelating85", "notcorrelating75"
-)
-colsets <- list(
-  columns_all, columns_notcorrelating90,
-  columns_notcorrelating85, columns_notcorrelating75
-)
+# colsids <- c(
+#   "all", "notcorrelating90",
+#   "notcorrelating85", "notcorrelating75"
+# )
+# colsets <- list(
+#   columns_all, columns_notcorrelating90,
+#   columns_notcorrelating85, columns_notcorrelating75
+# )
+colsids <- c("all", "readforms")
+colsets <- list(columns_all, columns_readabilty_forms)
 ```
 
 # Splits and folds
@@ -496,6 +502,15 @@ tune_res <- tibble(
 #   colsid <- colsids[coli]
 #   columns <- colsets[[coli]]
 
+#   message("tune linear on ", colsid)
+#   tune_linear <- tune.svm(training_set[columns], training_set$class,
+#     cost = 10^(-3:1),
+#     kernel = "linear"
+#   )
+#   tune_res <- tune_res %>%
+#     bind_rows(tune_linear$performances %>%
+#       mutate(kernel = "linear", columns = colsid, gamma = 0))
+
 #   message("tune radial on ", colsid)
 #   tune_radial <- tune.svm(training_set[columns], training_set$class,
 #     gamma = 10^(-3:3),
@@ -508,9 +523,9 @@ tune_res <- tibble(
 
 #   message("tune polynomial3 on ", colsid)
 #   tune_polynomial <- tune.svm(training_set[columns], training_set$class,
-#     gamma = 10^(-3:3),
+#     gamma = 10^(-3:0),
 #     degree = 3,
-#     cost = c(0.01, 0.1, 1, 10, 100, 1000),
+#     cost = 10^(-3:1),
 #     kernel = "polynomial"
 #   )
 #   tune_res <- tune_res %>%
@@ -520,9 +535,9 @@ tune_res <- tibble(
 
 #   message("tune polynomial4 on ", colsid)
 #   tune_polynomial <- tune.svm(training_set[columns], training_set$class,
-#     gamma = 10^(-3:3),
+#     gamma = 10^(-3:-1),
 #     degree = 4,
-#     cost = c(0.01, 0.1, 1, 10, 100, 1000),
+#     cost = 10^(-3:1),
 #     kernel = "polynomial"
 #   )
 #   tune_res <- tune_res %>%
@@ -532,9 +547,9 @@ tune_res <- tibble(
 
 #   message("tune polynomial5 on ", colsid)
 #   tune_polynomial <- tune.svm(training_set[columns], training_set$class,
-#     gamma = 10^(-3:3),
+#     gamma = 10^(-3:-1),
 #     degree = 5,
-#     cost = c(0.01, 0.1, 1, 10, 100, 1000),
+#     cost = 10^(-3:0),
 #     kernel = "polynomial"
 #   )
 #   tune_res <- tune_res %>%
@@ -545,7 +560,7 @@ tune_res <- tibble(
 #   message("tune sigmoid on ", colsid)
 #   tune_sigmoid <- tune.svm(training_set[columns], training_set$class,
 #     gamma = 10^(-3:3),
-#     cost = c(0.01, 0.1, 1, 10, 100, 1000),
+#     cost = 10^(-3:3),
 #     kernel = "sigmoid"
 #   )
 #   tune_res <- tune_res %>%
@@ -602,16 +617,20 @@ model_all <- train_svm(
 model_all$cm
 
 mismatches_all <- get_mismatch_details(model_all$prediction_set)
+mismatches_all$plot + theme_bw() + labs(y = "true class")
+ggsave("model_all_probabilities.pdf")
 ```
 
 ```{r fig.height=12, fig.width=10, fig.align='center'}
 for (doc in mismatches_all$highest_deviations) {
   doc_row <- mismatches_all$deviations %>% filter(FileName == doc)
-  cat(paste(
-    doc, "/", doc_row["subcorpus"][[1]],
-    "/ dev:", doc_row["abs_dev"][[1]] %>% round(3), "\n"
-  ))
-  print(plot_outlier(doc, variable_importances, data_clean))
+  cat(paste(doc, "/", doc_row["subcorpus"][[1]], "\n"))
+  cat("KUK_ID:", doc_row["KUK_ID"][[1]], "\n")
+  cat("dev:", doc_row["abs_dev"][[1]] %>% round(3), "\n")
+
+  plt <- plot_outlier(doc, variable_importances, data_clean) + theme_bw()
+  print(plt)
+  ggsave(paste(c("out_", doc_row["KUK_ID"][[1]], ".pdf"), collapse = ""), plt)
 }
 ```
 
