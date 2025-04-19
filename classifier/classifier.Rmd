@@ -126,10 +126,79 @@ get_mismatch_details <- function(data_with_predictions) {
   ))
 }
 
-plot_outlier <- function(doc_name, variable_importances, dataset) {
+analyze_outlier <- function(doc_name, variable_importances, dataset) {
   important_variables <- sort(variable_importances, decreasing = TRUE) %>%
     head(n = 16)
   varnames <- names(important_variables)
+
+  varscores <- tibble(feat = character(), score = numeric())
+  for (v in varnames) {
+    vgood <- filter(dataset, class == "good")[[v]]
+    vbad <- filter(dataset, class == "bad")[[v]]
+    vdoc <- filter(dataset, FileName == doc_name)[[v]]
+    docclass <- filter(dataset, FileName == doc_name)$class
+
+    # so that good values are always greater
+    if (mean(vgood) < mean(vbad)) {
+      vbad <- -vbad
+      vgood <- -vgood
+      vdoc <- -vdoc
+    }
+
+    qgood <- quantile(vgood, probs = c(.25, .75))
+    qbad <- quantile(vbad, probs = c(.25, .75))
+
+    # -2 very bad, -1 bad, 0 medium, +1 good, +2 very good
+    vscore <- sum(c(
+      vdoc > qbad[[1]], vdoc > qbad[[2]], vdoc > qgood[[1]], vdoc > qgood[[2]]
+    )) - 2
+
+    varscores <- varscores %>% add_row(feat = v, score = vscore)
+  }
+
+  varscores <- varscores %>%
+    mutate(verbose_score = case_when(
+      score == -2 ~ "very bad",
+      score == -1 ~ "bad",
+      score == 1 ~ "good",
+      score == 2 ~ "very good",
+      .default = "medium"
+    )) %>%
+    rowid_to_column("rank") %>%
+    select(rank, everything())
+
+  cat(paste("class", docclass, "and:\n"))
+  if (docclass == "good") {
+    print(
+      varscores %>%
+        filter(score < 0) %>%
+        select(rank, feat, verbose_score) %>%
+        as.data.frame()
+    )
+  } else {
+    print(
+      varscores %>%
+        filter(score > 0) %>%
+        select(rank, feat, verbose_score) %>%
+        as.data.frame()
+    )
+  }
+  cat("even though:\n")
+  if (docclass == "good") {
+    print(
+      varscores %>%
+        filter(score >= 0) %>%
+        select(rank, feat, verbose_score) %>%
+        as.data.frame()
+    )
+  } else {
+    print(
+      varscores %>%
+        filter(score <= 0) %>%
+        select(rank, feat, verbose_score) %>%
+        as.data.frame()
+    )
+  }
 
   dmut <- dataset %>%
     select(KUK_ID, FileName, class, all_of(varnames)) %>%
@@ -140,6 +209,7 @@ plot_outlier <- function(doc_name, variable_importances, dataset) {
     ) %>%
     mutate(across(value, ~ .x[, 1])) %>%
     mutate(across(feature, ~ factor(.x, levels = varnames)))
+
 
   cat(
     nrow(dmut %>% filter(value > 5)),
@@ -185,7 +255,7 @@ prettify_feat_name_vector <- function(x) {
 
 data <- read_csv("../measurements/measurements.csv")
 
-.firstnonmetacolumn <- 17
+.firstnonmetacolumn <- 18
 
 data_no_nas <- data %>%
   select(!c(
@@ -196,7 +266,7 @@ data_no_nas <- data %>%
     # subcorpus,
     DocumentTitle,
     ClarityPursuit,
-    Readability,
+    # Readability,
     SyllogismBased,
     SourceDB
   )) %>%
@@ -407,7 +477,9 @@ names(variable_importances) <- selected_features_names
 columns_all <- colnames(data_stratified)[
   (.firstnonmetacolumn + 1):ncol(data_stratified)
 ]
-columns_readabilty_forms <- c("ari", "cli", "fkgl", "fre", "gf", "smog")
+columns_cleaned <- columns_all[!(columns_all %in% c("atl", "cli"))]
+# columns_readabilty_forms <- c("ari", "cli", "fkgl", "fre", "gf", "smog")
+columns_readabilty_forms <- c("ari", "fkgl", "fre", "gf", "smog")
 
 correlating90 <- findCorrelation(
   cor(data_stratified[columns_all]),
@@ -457,8 +529,8 @@ for (col in columns_all) {
 #   columns_all, columns_notcorrelating90,
 #   columns_notcorrelating85, columns_notcorrelating75
 # )
-colsids <- c("all", "readforms")
-colsets <- list(columns_all, columns_readabilty_forms)
+colsids <- c("all", "cleaned", "readforms")
+colsets <- list(columns_all, columns_cleaned, columns_readabilty_forms)
 ```
 
 # Splits and folds
@@ -488,7 +560,7 @@ testing_set %>%
 
 # Tune
 
-```{r}
+```{r tune}
 tune_res <- tibble(
   columns = character(),
   kernel = character(),
@@ -575,6 +647,9 @@ tune_res %>%
   arrange(error, -dispersion)
 
 tune_res %>%
+  arrange(error + dispersion)
+
+tune_res %>%
   filter(columns == "all") %>%
   arrange(error, -dispersion)
 
@@ -583,7 +658,7 @@ tune_res %>%
   arrange(error, -dispersion)
 ```
 
-```{r fig.width=12, fig.height=12, fig.align='center'}
+```{r tune-report, fig.width=12, fig.height=12, fig.align='center'}
 tune_res %>%
   mutate(across(gamma, as.factor)) %>%
   ggplot(aes(
@@ -617,26 +692,82 @@ model_all <- train_svm(
 model_all$cm
 
 mismatches_all <- get_mismatch_details(model_all$prediction_set)
-mismatches_all$plot + theme_bw() + labs(y = "true class")
+mismatches_all$plot +
+  theme_bw() +
+  labs(y = "true class", x = "probability estimate")
 ggsave("model_all_probabilities.pdf")
 ```
 
-```{r fig.height=12, fig.width=10, fig.align='center'}
+```{r outliers-all, fig.height=14, fig.width=10, fig.align='center'}
 for (doc in mismatches_all$highest_deviations) {
   doc_row <- mismatches_all$deviations %>% filter(FileName == doc)
   cat(paste(doc, "/", doc_row["subcorpus"][[1]], "\n"))
   cat("KUK_ID:", doc_row["KUK_ID"][[1]], "\n")
   cat("dev:", doc_row["abs_dev"][[1]] %>% round(3), "\n")
+  cat("Readability:", doc_row["Readability"][[1]], "\n")
 
-  plt <- plot_outlier(doc, variable_importances, data_clean) + theme_bw()
+  plt <- analyze_outlier(doc, variable_importances, data_clean) + theme_bw()
   print(plt)
-  ggsave(paste(c("out_", doc_row["KUK_ID"][[1]], ".pdf"), collapse = ""), plt)
+  ggsave(
+    paste(c("outlier_all_", doc_row["KUK_ID"][[1]], ".pdf"), collapse = ""),
+    plt,
+    width = 8,
+    height = 8
+  )
 }
 ```
+
+# SVM cleaned
+
+
+```{r}
+set.seed(42)
+
+model_cleaned <- train_svm(
+  training_set, testing_set, columns_cleaned, "radial",
+  gamma = 0.01, cost = 1
+)
+model_cleaned$cm
+
+mismatches_cleaned <- get_mismatch_details(model_cleaned$prediction_set)
+mismatches_cleaned$plot +
+  theme_bw() +
+  labs(y = "true class", x = "probability estimate")
+ggsave("model_cleaned_probabilities.pdf")
+```
+
+```{r outliers-cleaned, fig.height=14, fig.width=10, fig.align='center'}
+variable_importances_cleaned <- variable_importances[
+  names(variable_importances) %in% columns_cleaned
+]
+
+for (doc in mismatches_cleaned$highest_deviations) {
+  doc_row <- mismatches_cleaned$deviations %>% filter(FileName == doc)
+  cat(paste(doc, "/", doc_row["subcorpus"][[1]], "\n"))
+  cat("KUK_ID:", doc_row["KUK_ID"][[1]], "\n")
+  cat("dev:", doc_row["abs_dev"][[1]] %>% round(3), "\n")
+  cat("Readability:", doc_row["Readability"][[1]], "\n")
+
+  plt <- analyze_outlier(doc, variable_importances_cleaned, data_clean) +
+    theme_bw()
+  print(plt)
+  ggsave(
+    paste(
+      c("outlier_cleaned_", doc_row["KUK_ID"][[1]], ".pdf"),
+      collapse = ""
+    ), plt,
+    width = 8,
+    height = 8
+  )
+}
+```
+
 
 # SVM readability formulas
 
 ```{r}
+set.seed(42)
+
 model_rf <- train_svm(
   training_set, testing_set, columns_readabilty_forms, "radial",
   gamma = 0.01, cost = 1
