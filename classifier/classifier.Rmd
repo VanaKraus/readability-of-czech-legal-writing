@@ -1,6 +1,10 @@
 ---
 title: Classifier
-output: pdf_document
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    code_folding: hide
 ---
 
 ```{r}
@@ -48,7 +52,8 @@ train_svm <- function(
 
   cm <- confusionMatrix(
     set_with_preds$pred, set_with_preds$class,
-    mode = "everything"
+    mode = "everything",
+    positive = "good"
   )
 
   return(list(
@@ -76,7 +81,8 @@ train_glm <- function(training_set, testing_set, columns) {
 
   cm <- confusionMatrix(
     set_with_preds$pred, set_with_preds$class,
-    mode = "everything"
+    mode = "everything",
+    positive = "good"
   )
 
   return(list(
@@ -570,6 +576,8 @@ tune_res <- tibble(
   dispersion = numeric()
 )
 
+# commented out to reduce computation time
+
 # for (coli in seq_along(colsets)) {
 #   colsid <- colsids[coli]
 #   columns <- colsets[[coli]]
@@ -734,6 +742,22 @@ mismatches_cleaned$plot +
   theme_bw() +
   labs(y = "true class", x = "probability estimate")
 ggsave("model_cleaned_probabilities.pdf")
+
+mismatches_cleaned$deviations %>%
+  select(subcorpus, class) %>%
+  table()
+mismatches_cleaned$deviations %>%
+  select(subcorpus, Readability) %>%
+  table(useNA = "ifany")
+
+mismatches_cleaned$deviations %>%
+  filter(abs_dev >= 0.17) %>%
+  select(subcorpus, class) %>%
+  table()
+mismatches_cleaned$deviations %>%
+  filter(abs_dev >= 0.17) %>%
+  select(subcorpus, Readability) %>%
+  table(useNA = "ifany")
 ```
 
 ```{r outliers-cleaned, fig.height=14, fig.width=10, fig.align='center'}
