@@ -543,6 +543,16 @@ mardia(data_scaled)
 
 Low (null) p-values show that we can reject the hypothesis that the data would be in a multivariate normal distribution. I.e. the distribution isn't multivariate normal.
 
+# Check for goodness of data
+
+```{r}
+data_scaled %>%
+  cor() %>%
+  det()
+KMO(data_scaled)
+bartlett.test(data_scaled)
+```
+
 # Good and broad FA!
 
 ## No. of vectors
