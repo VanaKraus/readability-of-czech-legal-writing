@@ -747,7 +747,7 @@ broad_data_factors_corr %>%
   )) +
   geom_tile() +
   geom_text() +
-  scale_fill_gradient2()
+  scale_fill_gradient2(limits = c(-1, 1))
 ```
 
 ```{r fig.height=9}
@@ -761,7 +761,7 @@ broad_data_factors_corr %>%
   )) +
   geom_tile() +
   geom_text() +
-  scale_fill_gradient2() +
+  scale_fill_gradient2(limits = c(-1, 1)) +
   labs(x = "factors", y = "variables") +
   theme_minimal()
 ggsave("varfactcorr.pdf")
