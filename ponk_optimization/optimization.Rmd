@@ -1,5 +1,10 @@
 ---
 title: PONK optimization
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    code_folding: hide
 ---
 
 # Load the corpora
@@ -9,6 +14,7 @@ library(tidyverse)
 library(tidymodels)
 library(jsonlite)
 library(psych)
+library(rstatix) # Wilcox effect size calculation
 
 set.seed(42)
 
@@ -448,4 +454,99 @@ data_clean <- data_no_nas %>%
     RecipientIndividuation,
     Anonymized
   ), ~ as.factor(.x)))
+```
+
+# Intervals
+
+```{r}
+intervals <- tibble(
+  feat = character(),
+  type = character(),
+  minimum = numeric(),
+  maximum = numeric()
+)
+effects <- tibble(
+  feat = character(),
+  p_val = numeric(),
+  effsize = numeric()
+)
+
+for (variab in names(data_clean)[.firstnonmetacolumn:ncol(data_clean)]) {
+  cat(variab, "\n")
+
+  effects <- effects %>% add_row(
+    feat = variab,
+    p_val = wilcox_test(data_clean, reformulate("class", variab))[["p"]],
+    effsize = wilcox_effsize(
+      data_clean, reformulate("class", variab)
+    )[["effsize"]][[1]]
+  )
+
+  distr_good <- data_clean %>%
+    filter(class == "good") %>%
+    pull({{ variab }})
+  distr_bad <- data_clean %>%
+    filter(class == "bad") %>%
+    pull({{ variab }})
+
+  positive <- mean(distr_good) > mean(distr_bad)
+
+  quant_good <- quantile(distr_good, probs = c(0.25, 0.75), names = FALSE)
+  quant_bad <- quantile(distr_bad, probs = c(0.25, 0.75), names = FALSE)
+  borders <- sort(c(quant_good, quant_bad))[2:3]
+
+  if (
+    (quant_good[1] < quant_bad[1] & quant_good[2] > quant_bad[2]) |
+      (quant_good[1] > quant_bad[1] & quant_good[2] < quant_bad[2])) {
+    cat(variab, "not determinative\n")
+  } else if (positive) {
+    intervals <- intervals %>%
+      add_row(
+        feat = variab,
+        type = "bad",
+        minimum = -Inf,
+        maximum = borders[1]
+      ) %>%
+      add_row(
+        feat = variab,
+        type = "medium",
+        minimum = borders[1],
+        maximum = borders[2]
+      ) %>%
+      add_row(
+        feat = variab,
+        type = "good",
+        minimum = borders[2],
+        maximum = Inf
+      )
+  } else {
+    intervals <- intervals %>%
+      add_row(
+        feat = variab,
+        type = "good",
+        minimum = -Inf,
+        maximum = borders[1]
+      ) %>%
+      add_row(
+        feat = variab,
+        type = "medium",
+        minimum = borders[1],
+        maximum = borders[2]
+      ) %>%
+      add_row(
+        feat = variab,
+        type = "bad",
+        minimum = borders[2],
+        maximum = Inf
+      )
+  }
+}
+
+intervals %>% write_csv("intervals.csv")
+
+effects %>%
+  arrange(p_val) %>%
+  print(n = 100)
+intervals %>%
+  print(n = 1000)
 ```
