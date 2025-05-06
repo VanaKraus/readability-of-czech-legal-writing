@@ -1,0 +1,451 @@
+---
+title: PONK optimization
+---
+
+# Load the corpora
+
+```{r}
+library(tidyverse)
+library(tidymodels)
+library(jsonlite)
+library(psych)
+
+set.seed(42)
+
+load_kuk_subcorpus_metadata <- function(crp) {
+  read_tsv(paste(c(
+    "../corpora/KUK_1.0/metadata/", crp, "_DocumentFileFormat.tsv"
+  ), collapse = "")) %>%
+    filter(FileFormat == "TXT") %>%
+    full_join(
+      read_tsv(paste(c(
+        "../corpora/KUK_1.0/metadata/",
+        crp,
+        "_DocumentIdentificationGenreProperties.tsv"
+      ), collapse = "")),
+      by = "KUK_ID"
+    ) %>%
+    mutate(across(where(is.numeric), as.character)) %>%
+    mutate(subcorpus = crp) %>%
+    select(KUK_ID, FileName, FileFormat, FolderPath, subcorpus, everything())
+}
+
+kuky_orig <- fromJSON("../corpora/KUKY/argumentative.json")$documents %>%
+  as_tibble() %>%
+  bind_rows(
+    fromJSON("../corpora/KUKY/normative.json")$documents %>% as_tibble()
+  ) %>%
+  rename(KUK_ID = doc_id) %>%
+  select(!c(plainText, doc_name)) %>%
+  select(KUK_ID, everything())
+
+kuky_kuk <- load_kuk_subcorpus_metadata("KUKY") %>%
+  filter(FolderPath == "data/KUKY/TXT") %>%
+  select(!c(Anonymized, RecipientType, RecipientIndividuation, AuthorType, Objectivity, LegalActType, Bindingness))
+
+kuky <- kuky_kuk %>% full_join(kuky_orig, by = "KUK_ID") %>%
+  # filter out court decisions
+  filter(!(KUK_ID %in% c(
+    "671a2e57c6537d54ff0626ed",
+    "671a2e57c6537d54ff0626ee",
+    "671a2e57c6537d54ff0626ef",
+    "67476b48c6537d54ff063934",
+    "67476b48c6537d54ff063935",
+    "67476b48c6537d54ff063936",
+    "67476b48c6537d54ff063937",
+    "67476b48c6537d54ff06393e",
+    "67476b48c6537d54ff06393c",
+    "67476b48c6537d54ff06393b",
+    "67476b48c6537d54ff063941",
+    "67476b48c6537d54ff063944",
+    "677e929cc6537d54ff06509c",
+    "67843083c6537d54ff06516b",
+    "67843083c6537d54ff06516c",
+    "67843083c6537d54ff06516d",
+    "67843084c6537d54ff06516e",
+    "67843084c6537d54ff06516f",
+    "67843084c6537d54ff065171",
+    "67843084c6537d54ff065170",
+    "678430cbc6537d54ff065173",
+    "678563ecc6537d54ff0651bc",
+    "678563ecc6537d54ff0651bd",
+    "678563edc6537d54ff0651be",
+    "678563edc6537d54ff0651bf",
+    "678563edc6537d54ff0651c0",
+    "678563edc6537d54ff0651c2",
+    "678563edc6537d54ff0651c1",
+    "678563edc6537d54ff0651c4",
+    "678563edc6537d54ff0651c5",
+    "678563edc6537d54ff0651c3",
+    "678563edc6537d54ff0651c6",
+    "678563edc6537d54ff0651c8",
+    "678563edc6537d54ff0651c7",
+    "678563edc6537d54ff0651c9",
+    "67895a5bc6537d54ff065612",
+    "67895a5bc6537d54ff065613",
+    "67895a5bc6537d54ff065614",
+    "67895a5bc6537d54ff065615",
+    "67895a5bc6537d54ff065616",
+    "674465a7c6537d54ff06315a",
+    "674465a7c6537d54ff06315b",
+    "674465a7c6537d54ff06315c",
+    "674465a7c6537d54ff06315d",
+    "674465a7c6537d54ff06315e",
+    "674465a7c6537d54ff06315f",
+    "674465a7c6537d54ff063160",
+    "674465a7c6537d54ff063161",
+    "671a2e57c6537d54ff0626ec"
+  )))
+
+eso <- load_kuk_subcorpus_metadata("ESO")
+frbo <- load_kuk_subcorpus_metadata("FrBo") %>%
+  # load metadata for FrBo updated with Quality (=Readability)
+  bind_rows(
+    read_csv("../corpora/FrBo_contents.csv") %>%
+      mutate(Readability = str_to_lower(Quality)) %>%
+      mutate(across(c(Readability), ~ str_replace(.x, "good", "high"))) %>%
+      select(!Quality)
+  ) %>%
+  # and move the Quality values to the original rows
+  arrange(KUK_ID) %>%
+  group_by(KUK_ID) %>%
+  fill(Readability, .direction = "up") %>%
+  ungroup() %>%
+  filter(!is.na(FileName))
+lifrlaw <- load_kuk_subcorpus_metadata("LiFRLaw")
+ombuflyers <- load_kuk_subcorpus_metadata("OmbuFlyers")
+
+df <- kuky %>%
+  bind_rows(eso) %>%
+  bind_rows(frbo) %>%
+  bind_rows(lifrlaw) %>%
+  bind_rows(ombuflyers)
+
+str(df)
+```
+
+# Filter out duplicates
+
+Some subcorpora overlap (*FrBo* with *ESO*, and multiple subcorpora with *KUKY*).
+
+The usage of documents with ClarityPursuit == NA is questionable, let's exclude such documents. This effectively comes with a price of excluding the whole *ESO* subcorpus, even though some of its documents are available in *KUKY*.
+
+The usage of documents with ClarityPursuit == TRUE is also questionable as they're not reviewed in the same manner as the documents from KUKY, yet at the same time they are less likely to be as "unreadable" as the documents with ClarityPursuit == FALSE. Such documents could very well be readable, interfering with the training process.
+
+After filtering ClarityPursuit == NA out, the only remaining overlaps are with *KUKY*. Let's keep the documents from *KUKY* as they are associated with a more careful readability evaluation.
+
+Additionaly, there are 3 cases where a text is assessed for readability both by *KUKY* and by *FrBo*. In 2 of these cases, the assessments don't agree: the texts are assessed "low" in *KUKY*, but "medium" by *FrBo*. This doesn't matter **under the condition** that we put them both in the same class for the training (i.e., "bad"). Let's keep the observations from *KUKY* for simplicity.
+
+```{r}
+table(df$subcorpus, df$ClarityPursuit, useNA = "ifany")
+table(df$ClarityPursuit, df$Readability, df$subcorpus, useNA = "ifany")
+
+# display duplicate file entries
+df %>%
+  group_by(FileName) %>%
+  mutate(n = n()) %>%
+  filter(n > 1) %>%
+  select(FileName, subcorpus, Readability, ClarityPursuit) %>%
+  arrange(FileName) %>%
+  print(n = 80)
+
+
+# search for FrBo duplicates
+df_frbo_duplicates <- df %>%
+  filter(str_detect(FileName, "red_|orig_")) %>%
+  mutate(new_fname = str_remove(FileName, "^[0-9]{3}_")) %>%
+  group_by(new_fname) %>%
+  mutate(n = n()) %>%
+  ungroup() %>%
+  filter(n >= 2)
+
+all_frbo_duplicates <- df_frbo_duplicates %>% pull(FileName)
+
+df_frbo_dup_wide <- df_frbo_duplicates %>%
+  select(new_fname, subcorpus, Readability, n) %>%
+  distinct(new_fname, subcorpus, Readability, n) %>%
+  pivot_wider(
+    names_from = subcorpus,
+    values_from = Readability,
+    names_prefix = "Readability_"
+  ) %>%
+  mutate(
+    class_KUKY = as.factor(if_else(Readability_KUKY == "high", "good", "bad")),
+    class_FrBo = as.factor(if_else(Readability_FrBo == "high", "good", "bad"))
+  )
+
+table(
+  df_frbo_dup_wide$Readability_KUKY, df_frbo_dup_wide$Readability_FrBo,
+  useNA = "ifany"
+)
+
+readability_agreement <- df_frbo_dup_wide %>%
+  select(class_KUKY, class_FrBo) %>%
+  table()
+readability_agreement
+cohen.kappa(readability_agreement)
+
+# this is valid UNDER THE CONDITION that we construct the "good" class
+# out of high-readability texts only
+good_frbo_duplicates <- df_frbo_dup_wide %>%
+  filter(
+    Readability_KUKY == Readability_FrBo | (
+      (Readability_KUKY == "medium" | Readability_KUKY == "low") &
+        (Readability_FrBo == "medium")
+    )
+  ) %>%
+  pull(new_fname)
+
+bad_frbo_duplicates <- setdiff(all_frbo_duplicates, good_frbo_duplicates)
+
+# remove FrBo/articles-originated texts from KUKY because:
+#   1. they are duplicates
+#   2. they are actually represented in markdown
+df %>%
+  filter(subcorpus == "KUKY" & str_detect(FileName, "red_|orig_")) %>%
+  pull(FileName)
+df <- df %>%
+  filter(subcorpus != "KUKY" | !str_detect(FileName, "red_|orig_"))
+
+# remove FrBo articles with different readability assessments by KUKY and FrBo
+df <- df %>% filter(!(FileName %in% bad_frbo_duplicates))
+
+# these two are also duplicates
+df <- df %>%
+  filter(!(FileName %in% c(
+    "orig_Mohou spolky ve správních žalobách používat věcné argumenty_final, odkaz na soudní ochrana spolků",
+    "red_Mohou spolky ve správních žalobách používat věcné argumenty_final, odkaz na soudní ochrana spolků"
+  ))) %>%
+  # missing in real data
+  filter(FileName != "partred_Jak chránit vody a správně s nimi nakládat")
+
+# remove OmbuFlyer–KUKY duplicates with different names
+# keep the ones from KUKY
+bad_of_kuky_duplicates <- df %>%
+  filter(subcorpus %in% c("KUKY", "OmbuFlyers")) %>%
+  mutate(new_fname = str_remove(FileName, "^[0-9]{3}_")) %>%
+  group_by(new_fname) %>%
+  mutate(n = n()) %>%
+  ungroup() %>%
+  filter(n > 1 & subcorpus == "OmbuFlyers") %>%
+  select(!c(new_fname, n)) %>%
+  pull(KUK_ID)
+bad_of_kuky_duplicates
+
+df <- df %>% filter(!(KUK_ID %in% bad_of_kuky_duplicates))
+
+# keep only rows where either Readability or ClarityPursuit isn't NA
+# and exclude ClarityPursuit == TRUE
+df <- df %>%
+  filter(!is.na(Readability) | ClarityPursuit == FALSE)
+
+# 6 duplicates remaining
+# keep the ones from KUKY as they have a readability assessment (see above)
+df <- df %>%
+  group_by(FileName) %>%
+  mutate(n = n()) %>%
+  ungroup() %>%
+  filter(n == 1 | subcorpus == "KUKY") %>%
+  select(!n)
+
+df
+```
+
+# Classes
+
+```{r}
+table(df$subcorpus, df$Readability, useNA = "ifany")
+
+df <- df %>%
+  mutate(class = if_else(Readability %in% c("high"), "good", "bad"))
+
+df %>%
+  select(class) %>%
+  table()
+df %>%
+  select(subcorpus, class) %>%
+  table()
+```
+
+# Measurements
+
+```{r}
+meas <- read_csv("../measurements/measurements.csv") %>%
+  filter(KUK_ID %in% df$KUK_ID)
+
+.firstnonmetacolumn <- 17
+
+data_no_nas <- meas %>%
+  select(!c(
+    fpath,
+    # KUK_ID,
+    # FileName,
+    FolderPath,
+    # subcorpus,
+    DocumentTitle,
+    ClarityPursuit,
+    Readability,
+    SyllogismBased,
+    SourceDB
+  )) %>%
+  # replace -1s in variation coefficients with NAs
+  mutate(across(c(
+    `RuleDoubleAdpos.max_allowable_distance.v`,
+    `RuleTooManyNegations.max_negation_frac.v`,
+    `RuleTooManyNegations.max_allowable_negations.v`,
+    `RuleTooManyNominalConstructions.max_noun_frac.v`,
+    `RuleTooManyNominalConstructions.max_allowable_nouns.v`,
+    `RuleCaseRepetition.max_repetition_count.v`,
+    `RuleCaseRepetition.max_repetition_frac.v`,
+    `RulePredSubjDistance.max_distance.v`,
+    `RulePredObjDistance.max_distance.v`,
+    `RuleInfVerbDistance.max_distance.v`,
+    `RuleMultiPartVerbs.max_distance.v`,
+    `RuleLongSentences.max_length.v`,
+    `RulePredAtClauseBeginning.max_order.v`,
+    `mattr.v`,
+    `maentropy.v`
+  ), ~ na_if(.x, -1))) %>%
+  # replace NAs with 0s
+  replace_na(list(
+    RuleGPcoordovs = 0,
+    RuleGPdeverbaddr = 0,
+    RuleGPpatinstr = 0,
+    RuleGPdeverbsubj = 0,
+    RuleGPadjective = 0,
+    RuleGPpatbenperson = 0,
+    RuleGPwordorder = 0,
+    RuleDoubleAdpos = 0,
+    RuleDoubleAdpos.max_allowable_distance.v = 0,
+    RuleAmbiguousRegards = 0,
+    RuleReflexivePassWithAnimSubj = 0,
+    RuleTooManyNegations = 0,
+    RuleTooManyNegations.max_negation_frac.v = 0,
+    RuleTooManyNegations.max_allowable_negations.v = 0,
+    RuleTooManyNominalConstructions.max_noun_frac.v = 0,
+    RuleTooManyNominalConstructions.max_allowable_nouns.v = 0,
+    RuleFunctionWordRepetition = 0,
+    RuleCaseRepetition.max_repetition_count.v = 0,
+    RuleCaseRepetition.max_repetition_frac.v = 0,
+    RuleWeakMeaningWords = 0,
+    RuleAbstractNouns = 0,
+    RuleRelativisticExpressions = 0,
+    RuleConfirmationExpressions = 0,
+    RuleRedundantExpressions = 0,
+    RuleTooLongExpressions = 0,
+    RuleAnaphoricReferences = 0,
+    RuleLiteraryStyle = 0,
+    RulePassive = 0,
+    RulePredSubjDistance = 0,
+    RulePredSubjDistance.max_distance.v = 0,
+    RulePredObjDistance = 0,
+    RulePredObjDistance.max_distance.v = 0,
+    RuleInfVerbDistance = 0,
+    RuleInfVerbDistance.max_distance.v = 0,
+    RuleMultiPartVerbs = 0,
+    RuleMultiPartVerbs.max_distance.v = 0,
+    RuleLongSentences.max_length.v = 0,
+    RulePredAtClauseBeginning.max_order.v = 0,
+    RuleVerbalNouns = 0,
+    RuleDoubleComparison = 0,
+    RuleWrongValencyCase = 0,
+    RuleWrongVerbonominalCase = 0,
+    RuleIncompleteConjunction = 0
+  )) %>%
+  # norm data expected to correlate with text length
+  mutate(across(c(
+    RuleGPcoordovs,
+    RuleGPdeverbaddr,
+    RuleGPpatinstr,
+    RuleGPdeverbsubj,
+    RuleGPadjective,
+    RuleGPpatbenperson,
+    RuleGPwordorder,
+    RuleDoubleAdpos,
+    RuleAmbiguousRegards,
+    RuleFunctionWordRepetition,
+    RuleWeakMeaningWords,
+    RuleAbstractNouns,
+    RuleRelativisticExpressions,
+    RuleConfirmationExpressions,
+    RuleRedundantExpressions,
+    RuleTooLongExpressions,
+    RuleAnaphoricReferences,
+    RuleLiteraryStyle,
+    RulePassive,
+    RuleVerbalNouns,
+    RuleDoubleComparison,
+    RuleWrongValencyCase,
+    RuleWrongVerbonominalCase,
+    RuleIncompleteConjunction,
+    num_hapax,
+    RuleReflexivePassWithAnimSubj,
+    RuleTooManyNominalConstructions,
+    RulePredSubjDistance,
+    RuleMultiPartVerbs,
+    RulePredAtClauseBeginning
+  ), ~ .x / word_count)) %>%
+  mutate(across(c(
+    RuleTooFewVerbs,
+    RuleTooManyNegations,
+    RuleCaseRepetition,
+    RuleLongSentences,
+    RulePredObjDistance,
+    RuleInfVerbDistance
+  ), ~ .x / sent_count)) %>%
+  # replace NAs with medians
+  mutate(across(c(
+    RuleDoubleAdpos.max_allowable_distance,
+    RuleTooManyNegations.max_negation_frac,
+    RuleTooManyNegations.max_allowable_negations,
+    RulePredSubjDistance.max_distance,
+    RulePredObjDistance.max_distance,
+    RuleInfVerbDistance.max_distance,
+    RuleMultiPartVerbs.max_distance
+  ), ~ coalesce(., median(., na.rm = TRUE))))
+
+data_clean <- data_no_nas %>%
+  # remove variables identified as text-length dependent
+  select(!c(
+    RuleTooFewVerbs,
+    RuleTooManyNegations,
+    RuleTooManyNominalConstructions,
+    RuleCaseRepetition,
+    RuleLongSentences,
+    RulePredAtClauseBeginning,
+    syllab_count,
+    char_count
+  )) %>%
+  # remove variables identified as unreliable
+  select(!c(
+    RuleAmbiguousRegards,
+    RuleFunctionWordRepetition,
+    RuleDoubleComparison,
+    RuleWrongValencyCase,
+    RuleWrongVerbonominalCase
+  )) %>%
+  # remove further variables belonging to the 'acceptability' category
+  select(!c(RuleIncompleteConjunction)) %>%
+  # remove artificially limited variables
+  select(!c(
+    RuleCaseRepetition.max_repetition_frac,
+    RuleCaseRepetition.max_repetition_frac.v
+  )) %>%
+  # remove variables with too many NAs
+  select(!c(
+    RuleDoubleAdpos.max_allowable_distance,
+    RuleDoubleAdpos.max_allowable_distance.v
+  )) %>%
+  mutate(across(c(
+    class,
+    FileFormat,
+    subcorpus,
+    DocumentVersion,
+    LegalActType,
+    Objectivity,
+    AuthorType,
+    RecipientType,
+    RecipientIndividuation,
+    Anonymized
+  ), ~ as.factor(.x)))
+```
