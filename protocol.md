@@ -21,14 +21,17 @@ Documents parsed on 2025-03-08 using `czech-pdt-ud-2.15-241121`.
 
 1. `python3 measurements/run_measurements.py -s file_processing/selected_documents.csv -u http://localhost:8000/raw -c measurements/measurements.csv`
 
-~~# Classifiers~~
+# Importance measures
 
-~~1. run `classifier/classifier.Rmd`~~
+1. run `importance_measures/importances.Rmd`
+2. `importance_measures/format_tables.Rmd` for pre-formatted TSVs
 
 # EFA
 
 1. run `efa/efa.Rmd`
 
-# RFs
+# Classifier
 
 1. run `classifier/classifier.Rmd`
+
+`classifier_legacy` and `classifier_legacy2` not used.
