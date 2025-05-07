@@ -1,10 +1,11 @@
 ---
 title: Classifier
-output: 
-  html_document:
-    toc: true
-    toc_float: true
-    code_folding: hide
+output: pdf_document
+# output: 
+#   html_document:
+#     toc: true
+#     toc_float: true
+#     code_folding: hide
 ---
 
 ```{r}
@@ -484,57 +485,12 @@ columns_all <- colnames(data_stratified)[
   (.firstnonmetacolumn + 1):ncol(data_stratified)
 ]
 columns_cleaned <- columns_all[!(columns_all %in% c("atl", "cli"))]
-# columns_readabilty_forms <- c("ari", "cli", "fkgl", "fre", "gf", "smog")
 columns_readabilty_forms <- c("ari", "fkgl", "fre", "gf", "smog")
-
-correlating90 <- findCorrelation(
-  cor(data_stratified[columns_all]),
-  cutoff = 0.9, verbose = TRUE, names = TRUE
-)
-
-columns_notcorrelating90 <- c()
-for (col in columns_all) {
-  if (!(col %in% correlating90)) {
-    columns_notcorrelating90 <- c(columns_notcorrelating90, col)
-  }
-}
-
-correlating85 <- findCorrelation(
-  cor(data_stratified[columns_all]),
-  cutoff = 0.85, verbose = TRUE, names = TRUE
-)
-
-columns_notcorrelating85 <- c()
-for (col in columns_all) {
-  if (!(col %in% correlating85)) {
-    columns_notcorrelating85 <- c(columns_notcorrelating85, col)
-  }
-}
-
-correlating75 <- findCorrelation(
-  cor(data_stratified[columns_all]),
-  cutoff = 0.75, verbose = TRUE, names = TRUE
-)
-
-columns_notcorrelating75 <- c()
-for (col in columns_all) {
-  if (!(col %in% correlating75)) {
-    columns_notcorrelating75 <- c(columns_notcorrelating75, col)
-  }
-}
 ```
 
 # Hyperparameters
 
 ```{r}
-# colsids <- c(
-#   "all", "notcorrelating90",
-#   "notcorrelating85", "notcorrelating75"
-# )
-# colsets <- list(
-#   columns_all, columns_notcorrelating90,
-#   columns_notcorrelating85, columns_notcorrelating75
-# )
 colsids <- c("all", "cleaned", "readforms")
 colsets <- list(columns_all, columns_cleaned, columns_readabilty_forms)
 ```
@@ -681,52 +637,7 @@ tune_res %>%
   theme(legend.position = "bottom")
 ```
 
-best:
-
-- columns: all
-- kernel: radial
-- gamma: 0.01
-- cost: 1
-
-# SVM
-
-```{r}
-set.seed(42)
-
-model_all <- train_svm(
-  training_set, testing_set, columns_all, "radial",
-  gamma = 0.01, cost = 1
-)
-model_all$cm
-
-mismatches_all <- get_mismatch_details(model_all$prediction_set)
-mismatches_all$plot +
-  theme_bw() +
-  labs(y = "true class", x = "probability estimate")
-ggsave("model_all_probabilities.pdf")
-```
-
-```{r outliers-all, fig.height=14, fig.width=10, fig.align='center'}
-for (doc in mismatches_all$highest_deviations) {
-  doc_row <- mismatches_all$deviations %>% filter(FileName == doc)
-  cat(paste(doc, "/", doc_row["subcorpus"][[1]], "\n"))
-  cat("KUK_ID:", doc_row["KUK_ID"][[1]], "\n")
-  cat("dev:", doc_row["abs_dev"][[1]] %>% round(3), "\n")
-  cat("Readability:", doc_row["Readability"][[1]], "\n")
-
-  plt <- analyze_outlier(doc, variable_importances, data_clean) + theme_bw()
-  print(plt)
-  ggsave(
-    paste(c("outlier_all_", doc_row["KUK_ID"][[1]], ".pdf"), collapse = ""),
-    plt,
-    width = 8,
-    height = 8
-  )
-}
-```
-
 # SVM cleaned
-
 
 ```{r}
 set.seed(42)
@@ -787,14 +698,3 @@ for (doc in mismatches_cleaned$highest_deviations) {
 ```
 
 
-# SVM readability formulas
-
-```{r}
-set.seed(42)
-
-model_rf <- train_svm(
-  training_set, testing_set, columns_readabilty_forms, "radial",
-  gamma = 0.01, cost = 1
-)
-model_rf$cm
-```

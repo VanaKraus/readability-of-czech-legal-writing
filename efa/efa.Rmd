@@ -1,5 +1,6 @@
 ---
 title: EFA
+# output: pdf_document
 output: 
   html_document:
     toc: true
@@ -429,10 +430,6 @@ data_purish <- data_clean %>%
   select(any_of(selected_features_names))
 ```
 
-what unites the low-communality variables we threw out:
-
-- variations have little to do with any other variables in the dataset; there is no factor stemming from the remainder of the feature set to explain them
-
 ## High correlations
 
 ```{r}
@@ -443,14 +440,6 @@ analyze_correlation(data_purish)$cor_tibble_long %>%
   arrange(feat1, -abs_cor) %>%
   print(n = 100)
 ```
-
-exclude: 
-
-- **ari:** corr. w/ RuleLongSentences.max_length > 0.94; sentence length seems more universal, let's make it a substitute 
-- **gf:** corr. w/ RuleLongSentences.max_length > 0.92; sentence length seems more universal, let's make it a substitute
-- **maentropy:** corr. w/ mattr > 0.96, but mattr is implemented in QuitaUp. besides, the interesting thing about maentropy is its variation
-- **smog:** corr. w/ fkgl almost 0.95, but fkgl coefficients adjusted for Czech are available
-- **atl:** corr. w/ cli around 0.96; unlike cli, atl is not a readability metric
 
 ```{r}
 high_correlations <- findCorrelation(
