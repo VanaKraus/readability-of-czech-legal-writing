@@ -26,6 +26,17 @@ library(paletteer) # color palettes
 library(conflicted) # to resolve QuantPsyc x dplyr conflicts
 conflict_prefer("select", "dplyr")
 conflict_prefer("filter", "dplyr")
+
+# library(showtext)
+# Add custom font
+# font_add(
+#   "Noto Sans",
+#   "/usr/share/fonts/Noto_Sans/NotoSans-Regular.ttf"
+# ) # Use the path to your .ttf file
+# showtext_auto()
+
+# noto_theme <- theme(text = element_text(family = "Noto Sans"))
+noto_theme <- theme()
 ```
 
 # Helpers
@@ -49,8 +60,10 @@ analyze_distributions <- function(data_factors_long, variable) {
     geom_boxplot() +
     facet_grid(factor ~ .) +
     labs(x = "factor score") +
+    noto_theme +
     theme_bw()
   ggsave(paste(c("distr", variable, ".pdf"), collapse = ""))
+  ggsave(paste(c("distr", variable, ".png"), collapse = ""))
   print(plot)
 
   # formula <- reformulate(variable, "factor_score")
@@ -564,8 +577,10 @@ fa_parallel_broad_df %>%
     mapping = aes(x = factor, y = eigenvalue)
   ) +
   labs(x = "factor number", y = "eigen values of principal factors") +
+  noto_theme +
   theme_bw()
 ggsave("scree.pdf", height = 4, width = 6)
+ggsave("scree.png", height = 4, width = 6)
 ```
 
 ## Model
@@ -752,6 +767,8 @@ broad_data_factors_corr %>%
   geom_text() +
   scale_fill_gradient2(limits = c(-1, 1)) +
   labs(x = "factors", y = "variables") +
-  theme_minimal()
+  theme_minimal() +
+  noto_theme
 ggsave("varfactcorr.pdf")
+ggsave("varfactcorr.png")
 ```

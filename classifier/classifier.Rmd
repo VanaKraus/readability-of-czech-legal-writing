@@ -1,11 +1,11 @@
 ---
 title: Classifier
-output: pdf_document
-# output: 
-#   html_document:
-#     toc: true
-#     toc_float: true
-#     code_folding: hide
+# output: pdf_document
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    code_folding: hide
 ---
 
 ```{r}
@@ -15,6 +15,17 @@ library(caret) # highly correlated features removal
 library(tidyverse)
 library(tidymodels)
 library(e1071)
+
+# library(showtext)
+# # Add custom font
+# font_add(
+#   "Noto Sans",
+#   "/usr/share/fonts/Noto_Sans/NotoSans-Regular.ttf"
+# ) # Use the path to your .ttf file
+# showtext_auto()
+
+# noto_theme <- theme(text = element_text(family = "Noto Sans"))
+noto_theme <- theme()
 ```
 
 # Helpers
@@ -651,8 +662,10 @@ model_cleaned$cm
 mismatches_cleaned <- get_mismatch_details(model_cleaned$prediction_set)
 mismatches_cleaned$plot +
   theme_bw() +
+  noto_theme +
   labs(y = "true class", x = "probability estimate")
 ggsave("model_cleaned_probabilities.pdf")
+ggsave("model_cleaned_probabilities.png")
 
 mismatches_cleaned$deviations %>%
   select(subcorpus, class) %>%
@@ -684,11 +697,19 @@ for (doc in mismatches_cleaned$highest_deviations) {
   cat("Readability:", doc_row["Readability"][[1]], "\n")
 
   plt <- analyze_outlier(doc, variable_importances_cleaned, data_clean) +
-    theme_bw()
+    theme_bw() + noto_theme
   print(plt)
   ggsave(
     paste(
       c("outlier_cleaned_", doc_row["KUK_ID"][[1]], ".pdf"),
+      collapse = ""
+    ), plt,
+    width = 8,
+    height = 8
+  )
+  ggsave(
+    paste(
+      c("outlier_cleaned_", doc_row["KUK_ID"][[1]], ".png"),
       collapse = ""
     ), plt,
     width = 8,
