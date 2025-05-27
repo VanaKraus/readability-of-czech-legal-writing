@@ -438,10 +438,10 @@ data_clean <- data_no_nas %>%
     RuleCaseRepetition.max_repetition_frac.v
   )) %>%
   # remove variables with too many NAs
-  select(!c(
-    RuleDoubleAdpos.max_allowable_distance,
-    RuleDoubleAdpos.max_allowable_distance.v
-  )) %>%
+  # select(!c(
+  #   RuleDoubleAdpos.max_allowable_distance,
+  #   RuleDoubleAdpos.max_allowable_distance.v
+  # )) %>%
   mutate(across(c(
     class,
     FileFormat,
@@ -463,13 +463,14 @@ intervals <- tibble(
   feat = character(),
   type = character(),
   minimum = numeric(),
-  maximum = numeric()
+  maximum = numeric(),
 )
 effects <- tibble(
   feat = character(),
   p_val = numeric(),
   effsize = numeric()
 )
+variable_polarity <- c()
 
 for (variab in names(data_clean)[.firstnonmetacolumn:ncol(data_clean)]) {
   cat(variab, "\n")
@@ -490,6 +491,7 @@ for (variab in names(data_clean)[.firstnonmetacolumn:ncol(data_clean)]) {
     pull({{ variab }})
 
   positive <- mean(distr_good) > mean(distr_bad)
+  variable_polarity[variab] <- positive
 
   quant_good <- quantile(distr_good, probs = c(0.25, 0.75), names = FALSE)
   quant_bad <- quantile(distr_bad, probs = c(0.25, 0.75), names = FALSE)
@@ -549,4 +551,108 @@ effects %>%
   print(n = 100)
 intervals %>%
   print(n = 1000)
+```
+
+# Boxplots
+
+```{r boxplots}
+for (variab in names(data_clean)[.firstnonmetacolumn:ncol(data_clean)]) {
+  cat("boxplot", variab, "\n")
+  print(
+    data_clean %>% ggplot(aes(x = class, y = !!sym(variab))) +
+      geom_boxplot()
+  )
+}
+```
+
+# Parameter borders
+
+```{r}
+parameter_variations <- names(data_clean)[.firstnonmetacolumn:ncol(data_clean)][
+  str_ends(names(data_clean)[.firstnonmetacolumn:ncol(data_clean)], "\\.v")
+]
+parameters <- str_remove(parameter_variations, "\\.v")
+
+data_comb <- data_clean %>% select(KUK_ID, class)
+
+for (p in parameters) {
+  combined_df <- data.frame(
+    data_clean[[p]] +
+      data_clean[[paste0(c(p, ".v"), collapse = "")]] *
+        if_else(variable_polarity[p], 0, 1)
+  )
+  names(combined_df) <- paste0(c(p, ".comb"), collapse = "")
+
+  data_comb <- data_comb %>% bind_cols(combined_df)
+}
+
+intervals_comb <- tibble(
+  feat = character(),
+  type = character(),
+  minimum = numeric(),
+  maximum = numeric(),
+)
+
+for (variab in names(data_comb)[3:ncol(data_comb)]) {
+  cat(variab, "\n")
+
+  distr_good <- data_comb %>%
+    filter(class == "good") %>%
+    pull({{ variab }})
+  distr_bad <- data_comb %>%
+    filter(class == "bad") %>%
+    pull({{ variab }})
+
+  quant_good <- quantile(distr_good, probs = c(0.25, 0.75), names = FALSE)
+  quant_bad <- quantile(distr_bad, probs = c(0.25, 0.75), names = FALSE)
+  borders <- sort(c(quant_good, quant_bad))[2:3]
+
+  if (
+    (quant_good[1] < quant_bad[1] & quant_good[2] > quant_bad[2]) |
+      (quant_good[1] > quant_bad[1] & quant_good[2] < quant_bad[2])) {
+    cat(variab, "not determinative\n")
+  } else if (variable_polarity[str_remove(variab, "\\.comb")]) {
+    intervals_comb <- intervals_comb %>%
+      add_row(
+        feat = variab,
+        type = "bad",
+        minimum = -Inf,
+        maximum = borders[1]
+      ) %>%
+      add_row(
+        feat = variab,
+        type = "medium",
+        minimum = borders[1],
+        maximum = borders[2]
+      ) %>%
+      add_row(
+        feat = variab,
+        type = "good",
+        minimum = borders[2],
+        maximum = Inf
+      )
+  } else {
+    intervals_comb <- intervals_comb %>%
+      add_row(
+        feat = variab,
+        type = "good",
+        minimum = -Inf,
+        maximum = borders[1]
+      ) %>%
+      add_row(
+        feat = variab,
+        type = "medium",
+        minimum = borders[1],
+        maximum = borders[2]
+      ) %>%
+      add_row(
+        feat = variab,
+        type = "bad",
+        minimum = borders[2],
+        maximum = Inf
+      )
+  }
+}
+
+intervals_comb %>% print(n = 1000)
 ```

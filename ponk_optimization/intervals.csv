@@ -14,6 +14,12 @@ RuleConfirmationExpressions,good,0,Inf
 RuleDoubleAdpos,good,-Inf,0.003387318839410244
 RuleDoubleAdpos,medium,0.003387318839410244,0.0065454222744493204
 RuleDoubleAdpos,bad,0.0065454222744493204,Inf
+RuleDoubleAdpos.max_allowable_distance,bad,-Inf,3.0125
+RuleDoubleAdpos.max_allowable_distance,medium,3.0125,4.845238095238095
+RuleDoubleAdpos.max_allowable_distance,good,4.845238095238095,Inf
+RuleDoubleAdpos.max_allowable_distance.v,good,-Inf,0.3446103839361119
+RuleDoubleAdpos.max_allowable_distance.v,medium,0.3446103839361119,0.6940705828951017
+RuleDoubleAdpos.max_allowable_distance.v,bad,0.6940705828951017,Inf
 RuleGPadjective,bad,-Inf,0
 RuleGPadjective,medium,0,0
 RuleGPadjective,good,0,Inf
