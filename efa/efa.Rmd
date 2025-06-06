@@ -671,6 +671,24 @@ broad_data$long %>%
 
 ```{r}
 analyze_distributions(broad_data$long, "class")
+
+broad_data$data %>%
+  ggplot(aes(x = sentcount, y = wordcount, color = PA2)) +
+  geom_point() +
+  theme_bw() +
+  scale_color_gradient2(low = "tomato4", high = "steelblue4")
+ggsave("footnote_PA2_grad.pdf", width = 8, height = 6)
+broad_data$data %>%
+  ggplot(aes(x = sentcount, y = wordcount, color = class)) +
+  geom_point() +
+  theme_bw()
+ggsave("footnote_PA2_class.pdf", width = 8, height = 6)
+
+broad_data$data %>%
+  ggplot(aes(x = sentlen.m, y = VERBcomp, color = class)) +
+  geom_point() +
+  theme_bw()
+ggsave("footnote_PA4.pdf", width = 8, height = 6)
 ```
 
 ### subcorpus
