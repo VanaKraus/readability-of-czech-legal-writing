@@ -276,7 +276,7 @@ df %>%
 # Measurements
 
 ```{r}
-meas <- read_csv("../measurements/measurements.csv") %>%
+meas <- read_csv("../measurements/measurements_2025-12-02.csv") %>%
   filter(KUK_ID %in% df$KUK_ID)
 
 .firstnonmetacolumn <- 17
@@ -356,7 +356,7 @@ data_no_nas <- meas %>%
     RuleDoubleComparison = 0,
     RuleWrongValencyCase = 0,
     RuleWrongVerbonominalCase = 0,
-    RuleIncompleteConjunction = 0
+    RuleIncompleteConstruction = 0
   )) %>%
   # norm data expected to correlate with text length
   mutate(across(c(
@@ -383,7 +383,7 @@ data_no_nas <- meas %>%
     RuleDoubleComparison,
     RuleWrongValencyCase,
     RuleWrongVerbonominalCase,
-    RuleIncompleteConjunction,
+    RuleIncompleteConstruction,
     num_hapax,
     RuleReflexivePassWithAnimSubj,
     RuleTooManyNominalConstructions,
@@ -431,7 +431,7 @@ data_clean <- data_no_nas %>%
     RuleWrongVerbonominalCase
   )) %>%
   # remove further variables belonging to the 'acceptability' category
-  select(!c(RuleIncompleteConjunction)) %>%
+  select(!c(RuleIncompleteConstruction)) %>%
   # remove artificially limited variables
   select(!c(
     RuleCaseRepetition.max_repetition_frac,
